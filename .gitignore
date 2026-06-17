@@ -1,0 +1,22 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual environments
+venv/
+.env/
+carbon_track_env/
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+
+# Environment variables / secrets
+.env
+.venv
+venv
+ENV
+
+
+# OS files
+.DS_Store
+Thumbs.db
