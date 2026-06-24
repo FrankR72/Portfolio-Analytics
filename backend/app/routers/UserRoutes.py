@@ -41,5 +41,13 @@ async def create_user(user:UserCreate, db: Annotated[AsyncSession, Depends(get_d
             status_code=status.HTTP_409_CONFLICT,
             detail='Email already registered.'
         )
+        
+    new_user = models.User(
+        username = user.username,
+        email = user.email
+    )
     
-    
+    db.add(new_user)
+    await db.commit()
+    await db.refresh(new_user)
+    return new_user
