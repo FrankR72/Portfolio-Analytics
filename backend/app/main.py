@@ -9,10 +9,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 
+from database import Base, engine, get_db
+
 # Create tables in a lifespan function
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    # Shutdown
+    await engine.dispose()
+    
 
 
-app = FastAPI()
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 @app.get("/health", include_in_schema=False)

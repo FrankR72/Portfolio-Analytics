@@ -16,6 +16,10 @@ class UserCreate(UserBase):
 class UserResponse(UserBase):
     pass
 
+class UserUpdate(UserBase):
+    username: str | None = Field(default=None, min_length=1, max_length=100)
+    email: EmailStr | None = Field(default=None, max_length=120)
+
 
 
 # Pydantic models for Portfolio
