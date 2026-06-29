@@ -14,7 +14,9 @@ class UserCreate(UserBase):
     pass
 
 class UserResponse(UserBase):
-    pass
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: int
 
 class UserUpdate(UserBase):
     username: str | None = Field(default=None, min_length=1, max_length=100)
@@ -24,16 +26,19 @@ class UserUpdate(UserBase):
 
 # Pydantic models for Portfolio
 class PortfolioBase(BaseModel):
-    title: str = Field(min_length=1, max_length=100, description="The name of the portfolio")
+    title: str = Field(max_length=100, description="The name of the portfolio")
     
 class PortfolioCreate(PortfolioBase):
-    pass
+    user_id: int #TEMPORARY
 
 class PortfolioResponse(PortfolioBase):
     model_config = ConfigDict(from_attributes=True)
     
     id: int
+    user_id: int
     date_created: str
+    author: UserResponse
     
 class PortfolioUpdate(PortfolioBase):
-    title: str | None = Field(default=None)
+    title: str | None = Field(default=None, max_length=100)
+    
