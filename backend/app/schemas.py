@@ -24,7 +24,7 @@ class UserUpdate(UserBase):
 
 # Pydantic models for Portfolio
 class PortfolioBase(BaseModel):
-    name: str = Field(min_length=1, max_length=100, description="The name of the portfolio")
+    title: str = Field(min_length=1, max_length=100, description="The name of the portfolio")
     
 class PortfolioCreate(PortfolioBase):
     pass
@@ -34,3 +34,6 @@ class PortfolioResponse(PortfolioBase):
     
     id: int
     date_created: str
+    
+class PortfolioUpdate(PortfolioBase):
+    title: str | None = Field(default=None)
