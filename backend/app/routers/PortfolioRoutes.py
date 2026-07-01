@@ -6,18 +6,18 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import models
+from app import models
 
-from database import get_db
+from app.database import get_db
 
 from app.schemas import PortfolioBase, PortfolioCreate, PortfolioResponse, PortfolioUpdate
 
 
-router = APIRouter(prefix="/portfolio", tags=["portfolio"])
+router = APIRouter()
 
 # Select all portfolios in the db ---> ### Might have to delete or alter, don´t see the need for this. ###
 @router.get("", response_model=list[PortfolioResponse])
-async def get_posts(db: Annotated[AsyncSession, Depends(get_db)]):
+async def get_portfolio(db: Annotated[AsyncSession, Depends(get_db)]):
     result = await db.execute(
         select(models.Portfolio)
         .options(selectinload(models.Portfolio.author))
@@ -28,7 +28,7 @@ async def get_posts(db: Annotated[AsyncSession, Depends(get_db)]):
     
     return portfolios
 
-
+# Select one protfolio in the db by id
 @router.get("/{portfolio_id}", response_model=PortfolioResponse)
 async def get_one_portfolio(portfolio_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
     result = await db.execute(
@@ -45,3 +45,4 @@ async def get_one_portfolio(portfolio_id: int, db: Annotated[AsyncSession, Depen
         status_code=status.HTTP_404_NOT_FOUND,
         detail="Portfolio not found."
     )
+
