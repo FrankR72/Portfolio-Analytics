@@ -6,7 +6,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import models
+
 from database import get_db
+
 from app.schemas import UserBase, UserCreate, UserResponse, UserUpdate
 
 
