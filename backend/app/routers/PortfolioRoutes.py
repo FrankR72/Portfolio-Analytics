@@ -45,4 +45,3 @@ async def get_one_portfolio(portfolio_id: int, db: Annotated[AsyncSession, Depen
         status_code=status.HTTP_404_NOT_FOUND,
         detail="Portfolio not found."
     )
-

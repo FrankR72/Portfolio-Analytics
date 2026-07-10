@@ -84,7 +84,7 @@ async def update_user(
     user_id: int, 
     user_update: UserUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    ):
+):
     
     result = await db.execute(
         select(models.User).where(models.User.id == user_id)
