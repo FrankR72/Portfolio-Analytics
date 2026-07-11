@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.routers import UserRoutes, PortfolioRoutes
+from app.routers import UserRoutes, PortfolioRoutes, TransactionRoutes
 
 # Async-related imports
 from contextlib import asynccontextmanager
@@ -31,3 +31,4 @@ def health_check():
 
 app.include_router(UserRoutes.router, prefix="/api/users", tags=["users"])
 app.include_router(PortfolioRoutes.router, prefix="/api/portfolios", tags=["portfolios"])
+app.include_router(TransactionRoutes.router, prefix="/api/transactions", tags=["transactions"])
