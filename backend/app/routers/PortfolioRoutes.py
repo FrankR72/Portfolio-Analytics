@@ -10,7 +10,7 @@ from app import models
 
 from app.database import get_db
 
-from app.schemas import PortfolioBase, PortfolioCreate, PortfolioResponse, PortfolioUpdate
+from app.schemas import PortfolioResponse
 
 
 router = APIRouter()
