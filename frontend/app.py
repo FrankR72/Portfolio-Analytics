@@ -1,7 +1,7 @@
 import streamlit as st
 
 st.set_page_config(
-    page_title="Main app", 
+    page_title="Landingpage", 
     page_icon="💹",
     layout="wide",
 )
@@ -13,17 +13,20 @@ with col1:
     st.subheader("💹StockPlatform")
 
 with col2:
-    st.button("Log in")
+    login = st.button("Log in")
+    if login:
+        st.switch_page("pages/1_login.py")
 
 with col3:
-    st.button("Sign up")
-
+    signup = st.button("Sign up")
+    if signup:
+        st.switch_page("pages/2_signup.py")
 st.divider()
 
 st.title("Build and track your portfolio")
 
 
-st.write("This is the cool homepage!")
+st.write("This is the cool landingpage!")
 st.code(r"""
          
                              .-----.
