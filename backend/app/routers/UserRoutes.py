@@ -44,7 +44,7 @@ async def create_user(user:UserCreate, db: Annotated[AsyncSession, Depends(get_d
     
     if existing_email:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
+            status_code=status.HTTP_406_NOT_ACCEPTABLE,
             detail='Email already registered.'
         )
     

@@ -21,6 +21,9 @@ st.title("Log in", text_alignment="center")
 col1, col2, col3 = st.columns([2, 1, 2])
 
 with col2:
+    email = st.text_input("Email")
+    # pending password !!!
+    
     login = st.button("Log in", use_container_width=True)
     if login:
         st.switch_page("pages/3_main_dashboard.py")
