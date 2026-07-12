@@ -68,3 +68,8 @@ class TransactionUpdate(TransactionBase):
     transaction_type: bool | None = Field(default=None)
     quantity_actions: int | None = Field(default=None, gt=0)
     price: float | None = Field(default=None, gt=0)
+    
+
+# Pydantic models for Auth
+class LoginRequest(BaseModel):
+    email: EmailStr

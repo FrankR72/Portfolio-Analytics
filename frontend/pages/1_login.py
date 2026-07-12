@@ -1,4 +1,6 @@
 import streamlit as st
+import requests
+
 
 st.set_page_config(
     page_title="Log in",
@@ -25,8 +27,20 @@ with col2:
     # pending password !!!
     
     login = st.button("Log in", use_container_width=True)
+        
     if login:
-        st.switch_page("pages/3_main_dashboard.py")
+        payload = {
+            "email": email
+        }
+        response = requests.post(
+            url="http://127.0.0.1:8000/api/auth",
+            json=payload
+        )
+        if response.status_code == 200:
+            st.switch_page("pages/3_main_dashboard.py")
+        elif response.status_code in (404, 422):
+            st.error("Email not found. Please check your email.")   
+
 
 col1, col2, col3 = st.columns([2, 1, 2])
 
