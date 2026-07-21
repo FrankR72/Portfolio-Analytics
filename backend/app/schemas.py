@@ -43,7 +43,7 @@ class PortfolioResponse(PortfolioBase):
     id: int
     user_id: int
     date_created: str
-    author: UserResponse
+    author: UserPublic
     
 class PortfolioUpdate(PortfolioBase):
     title: str | None = Field(default=None, max_length=100)

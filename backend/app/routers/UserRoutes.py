@@ -1,30 +1,42 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import models
 
 from app.database import get_db
 
-from app.schemas import UserBase, UserCreate, UserResponse, UserUpdate
+from app.schemas import UserBase, UserCreate, UserUpdate, UserPublic, UserPrivate, Token
 
+from datetime import timedelta
+
+from auth import (
+    oauth2_scheme,
+    hash_password,
+    verify_password,
+    create_access_token,
+    verify_access_token
+)
+
+from config import settings
 
 router = APIRouter()
 
 # ======== CREATE USER ========
 @router.post(
     "",
-    response_model=UserResponse,
+    response_model=UserPrivate,
     status_code=status.HTTP_201_CREATED
 )
 async def create_user(user:UserCreate, db: Annotated[AsyncSession, Depends(get_db)]):
     
     # CHECK if the USER already EXISTS in the database.
     result = await db.execute(
-        select(models.User).where(models.User.username == user.username),
+        select(models.User).where(func.lower(models.User.username) == user.username.lower()),
     )
     
     existing_user = result.scalars().first()
@@ -37,7 +49,7 @@ async def create_user(user:UserCreate, db: Annotated[AsyncSession, Depends(get_d
         
     # CHECK if the EMAIL is already REGISTEDED in the database.
     result = await db.execute(
-        select(models.User.email).where(models.User.email == user.email),
+        select(models.User.email).where(func.lower(models.User.email) == user.email.lower()),
     )
     
     existing_email = result.scalars().first()
@@ -51,16 +63,45 @@ async def create_user(user:UserCreate, db: Annotated[AsyncSession, Depends(get_d
     # CREATE the new user.
     new_user = models.User(
         username = user.username,
-        email = user.email
+        email = user.email,
+        password_hash = hash_password(user.password)
     )    
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
     return new_user
 
+# ======== LOGIN TO ACCESS TOKEN ========
+@router.post("/token", response_model=Token)
+async def login_for_access_token(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    db: Annotated[AsyncSession, Depends(get_db)]
+):
+    result = await db.execute(
+        select(models.User).where(
+            func.lower(models.User.username) == form_data.username.lower()
+        )
+    )
+
+    user = result.scalars().first()
+    
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect Email or Password",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    
+    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+    access_token = create_access_token(
+        data={"sub": str(user.id)},
+        expires_delta=access_token_expires
+    )
+    return Token(access_token=access_token, token_type="bearer")
+
 
 # ======== READ USER ========
-@router.get("/{user_id}",response_model=UserResponse,)
+@router.get("/{user_id}",response_model=UserPrivate)
 async def get_user(user_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
     
     # RETRIEVE user from the database based on id. 
@@ -79,7 +120,7 @@ async def get_user(user_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
 
 
 # ======== UPDATE USER ========
-@router.patch("/{user_id}", response_model=UserResponse)
+@router.patch("/{user_id}", response_model=UserPrivate)
 async def update_user(
     user_id: int, 
     user_update: UserUpdate,
