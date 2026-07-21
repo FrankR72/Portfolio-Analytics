@@ -78,3 +78,8 @@ class TransactionUpdate(TransactionBase):
 # Pydantic models for Auth
 class LoginRequest(BaseModel):
     email: EmailStr
+    
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
