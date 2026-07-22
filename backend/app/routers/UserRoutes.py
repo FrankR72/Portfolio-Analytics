@@ -100,8 +100,51 @@ async def login_for_access_token(
     return Token(access_token=access_token, token_type="bearer")
 
 
+# ======== TOKEN VALIDATION ========
+@router.get("/me", response_model=UserPrivate)
+async def get_current_user(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    db: Annotated[AsyncSession, Depends(get_db)]
+):
+    user_id = verify_access_token(token)
+    
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    try:
+        user_id_int = int(user_id)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        
+    result = await db.execute(
+        select(models.User).where(
+            models.User.id == user_id_int
+        )
+    )
+    
+    user = result.scalars().first()
+    
+    if not user:
+        raise HTTPException(
+            detail="User not found",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    else: 
+        return user
+        
+
+
 # ======== READ USER ========
-@router.get("/{user_id}",response_model=UserPrivate)
+@router.get("/{user_id}",response_model=UserPublic)
 async def get_user(user_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
     
     # RETRIEVE user from the database based on id. 
@@ -120,7 +163,7 @@ async def get_user(user_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
 
 
 # ======== UPDATE USER ========
-@router.patch("/{user_id}", response_model=UserPrivate)
+@router.patch("/{user_id}", response_model=UserPrivate) # UserPrivate is used when we expect only loged in user to get a response.
 async def update_user(
     user_id: int, 
     user_update: UserUpdate,
@@ -139,9 +182,9 @@ async def update_user(
         )
 
     # Updated Username not None or not the same as the current one. 
-    if user_update.username is not None and user_update.username != user.username:
+    if user_update.username is not None and user_update.username.lower() != user.username.lower():
         username = await db.execute(
-            select(models.User).where(models.User.username)
+            select(models.User).where(func.lower(models.User.username) == user_update.username.lower())
         )
         
         existing_username = username.scalars().first()
@@ -151,9 +194,9 @@ async def update_user(
                 detail="Username already exists."
             )
             
-    if user_update.email is not None and user_update.email != user.email:
+    if user_update.email is not None and user_update.email.lower() != user.email.lower():
         result = await db.execute(
-            select(models.User).where(models.User.email == user_update.email)
+            select(models.User).where(func.lower(models.User.email) == user_update.email.lower())
         )
     
         existing_email = result.scalars().first()
@@ -167,7 +210,7 @@ async def update_user(
     if user_update.username is not None:
         user.username = user_update.username
     if user_update.email is not None:
-        user.email = user_update.email
+        user.email = user_update.email.lower()
 
     await db.commit()
     await db.refresh(user)
