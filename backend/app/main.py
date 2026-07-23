@@ -24,6 +24,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+@app.get("/", include_in_schema=False)
+def root():
+    return {"message": "Welcome to the Portfolio Analytics API!"}
+
 
 @app.get("/health", include_in_schema=False)
 def health_check():

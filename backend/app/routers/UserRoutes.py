@@ -10,11 +10,11 @@ from app import models
 
 from app.database import get_db
 
-from app.schemas import UserBase, UserCreate, UserUpdate, UserPublic, UserPrivate, Token
+from app.schemas import UserCreate, UserUpdate, UserPublic, UserPrivate, Token
 
 from datetime import timedelta
 
-from auth import (
+from app.auth import (
     oauth2_scheme,
     hash_password,
     verify_password,
@@ -22,7 +22,7 @@ from auth import (
     verify_access_token
 )
 
-from config import settings
+from app.config import settings
 
 router = APIRouter()
 
@@ -64,7 +64,7 @@ async def create_user(user:UserCreate, db: Annotated[AsyncSession, Depends(get_d
     new_user = models.User(
         username = user.username,
         email = user.email,
-        password_hash = hash_password(user.password)
+        hashed_password = hash_password(user.password)
     )    
     db.add(new_user)
     await db.commit()

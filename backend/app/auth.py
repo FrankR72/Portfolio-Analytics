@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordBearer
 
 from datetime import UTC, datetime, timedelta
 
-from config import settings
+from app.config import settings
 
 import jwt
 
