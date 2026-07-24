@@ -26,6 +26,7 @@ from app.config import settings
 
 router = APIRouter()
 
+
 # ======== CREATE USER ========
 @router.post(
     "",
