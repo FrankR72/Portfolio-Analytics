@@ -28,7 +28,7 @@ def create_access_token(data: dict, expires_delta: timedelta) -> str:
         expire = datetime.now(UTC) + expires_delta
     
     else:
-        expire = datetime(UTC) + timedelta(minutes=settings.access_token_expire_minutes)
+        expire = datetime.now(UTC) + timedelta(minutes=settings.access_token_expire_minutes)
         
     to_encode.update({"exp": expire})
     
@@ -47,7 +47,7 @@ def verify_access_token(token: str) -> str | None:
             jwt=token,
             key=settings.secrety_key.get_secret_value(),
             algorithms=[settings.algorithm],
-            options={"requier": ["exp", "sub"]}
+            options={"require": ["exp", "sub"]}
         )
     except jwt.InvalidTokenError:
         return None
