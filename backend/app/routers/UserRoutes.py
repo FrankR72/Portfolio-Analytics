@@ -72,6 +72,7 @@ async def create_user(user:UserCreate, db: Annotated[AsyncSession, Depends(get_d
     await db.refresh(new_user)
     return new_user
 
+
 # ======== LOGIN TO ACCESS TOKEN ========
 @router.post("/token", response_model=Token)
 async def login_for_access_token(
