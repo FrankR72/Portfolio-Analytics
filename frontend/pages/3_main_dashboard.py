@@ -6,4 +6,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("Welcome to the cool Main Dashboard!")
+st.title("Main Dashboard para el usuario")
+
+
+st.write("Mis proyectos")

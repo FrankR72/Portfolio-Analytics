@@ -1,53 +1,49 @@
+from fastapi.security import OAuth2PasswordBearer
+
+from datetime import timedelta, datetime, UTC
+
+from config import settings
 
 from pwdlib import PasswordHash
 
-from fastapi.security import OAuth2PasswordBearer
-
-from datetime import UTC, datetime, timedelta
-
-from app.config import settings
-
 import jwt
 
-password_hash = PasswordHash.recommended()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/users/token")
+
+password_hash = PasswordHash.recommended()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
 
 def hash_password(password: str) -> str:
-    return password_hash.hash(password=password)
+    return password_hash.hash(password)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return password_hash.verify(password=plain_password, hash=hashed_password)
-
+    return password_hash.verify(plain_password, hashed_password)
 
 def create_access_token(data: dict, expires_delta: timedelta) -> str:
-    """Create a JWT access token"""
+    """Generate JWT aaccess token"""
     to_encode = data.copy()
-    
     if expires_delta:
         expire = datetime.now(UTC) + expires_delta
-    
+        
     else:
         expire = datetime.now(UTC) + timedelta(minutes=settings.access_token_expire_minutes)
-        
-    to_encode.update({"exp": expire})
     
+    to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(
         payload=to_encode,
-        key=settings.secrety_key.get_secret_value(),
+        key=settings.secret_key.get_secret_value(),
         algorithm=settings.algorithm
     )
     return encoded_jwt
 
-
 def verify_access_token(token: str) -> str | None:
-    """Verify a JWT access token and return the (user id) if valid"""
+    """Verify access token and respond with (user id) when valid"""
     try:
         payload = jwt.decode(
             jwt=token,
-            key=settings.secrety_key.get_secret_value(),
+            key=settings.secret_key.get_secret_value(),
             algorithms=[settings.algorithm],
-            options={"require": ["exp", "sub"]}
+            options={"require": ["sub", "exp"]}
         )
     except jwt.InvalidTokenError:
         return None

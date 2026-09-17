@@ -1,16 +1,17 @@
 import streamlit as st
 
+
+
 st.set_page_config(
-    page_title="Landingpage", 
-    page_icon="💹",
+    page_title="Plataforma Huella de Carbono",
+    page_icon="🏭",
     layout="wide",
 )
-
 
 col1, col2, col3 = st.columns([5, 1, 1])
 
 with col1:
-    st.subheader("💹StockPlatform")
+    st.subheader("Huella de carbono")
 
 with col2:
     login = st.button("Log in")
@@ -23,41 +24,8 @@ with col3:
         st.switch_page("pages/2_signup.py")
 st.divider()
 
-st.title("Build and track your portfolio")
+st.title("HOMEPAGE")
 
+st.space(size=70)
 
-st.write("This is the cool landingpage!")
-st.code(r"""
-         
-                             .-----.
-                            /7  .  (
-                           /   .-.  \
-                          /   /   \  \
-                         / `  )   (   )
-                        / `   )   ).  \
-                      .'  _.   \_/  . |
-     .--.           .' _.' )`.        |
-    (    `---...._.'   `---.'_)    ..  \
-     \            `----....___    `. \  |
-      `.           _ ----- _   `._  )/  |
-        `.       /"  \   /"  \`.  `._   |
-          `.    ((O)` ) ((O)` ) `.   `._\
-            `-- '`---'   `---' )  `.    `-.
-               /                  ` \      `-.
-             .'                      `.       `.
-            /                     `  ` `.       `-.
-     .--.   \ ===._____.======. `    `   `. .___.--`     .''''.
-    ' .` `-. `.                )`. `   ` ` \          .' . '   )
-   (   .  ` `-.`.               ( .  ` `  .`\      .'  '    ' /
-    \  `. `    `-.               ) ` .   ` ` \  .'   ' .  '  /
-     \ ` `.  ` . \`.    .--.     |  ` ) `   .``/   '  // .  /
-      `.  ``. .   \ \   .-- `.  (  ` /_   ` . / ' .  '/   .'
-        `. ` \  `  \ \  '-.   `-'  .'  `-.  `   .  .'/  .'
-          \ `.`.  ` \ \    ) /`._.`       `.  ` .  .'  /
-           |  `.`. . \ \  (.'               `.   .'  .'
-        __/  .. \ \ ` ) \                     \.' .. \__
- .-._.-'     '"  ) .-'   `.                   (  '"     `-._.--.
-(_________.-====' / .' /\_)`--..__________..-- `====-. _________)
-                 (.'(.'
-""", language=None)
-
+st.write("Design and images")
