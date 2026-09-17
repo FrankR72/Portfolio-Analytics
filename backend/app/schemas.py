@@ -1,15 +1,13 @@
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 
-from sqlalchemy import String
-
 
 # User schema
 class UserBase(BaseModel):
-    username: str = Field(String, min_length=1, max_length=100)
-    email: EmailStr = Field(String, max_length=120)
+    username: str = Field(min_length=1, max_length=100)
+    email: EmailStr = Field(max_length=120)
     
 class UserCreate(UserBase):
-    password: str = Field(String, min_length=8)
+    password: str = Field(min_length=8)
     
 class UserPublic(UserBase):
     model_config = ConfigDict(from_attributes=True)
@@ -21,11 +19,25 @@ class UserPrivate(UserPublic):
     email: EmailStr
     
 class UserUpdate(UserBase):
-    username: str | None = Field(String, min_length=1, max_length=100)
-    email: EmailStr | None = Field(String, max_length=120)
+    username: str | None = Field(min_length=1, max_length=100)
+    email: EmailStr | None = Field(max_length=120)
     
     
 # JWT token schema
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+
+
+# Portfolio schema
+class PortfolioBase(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    user_id: int
+    
+class PortfolioCreate(PortfolioBase):
+    pass
+
+class PortfolioUpdate(PortfolioBase):
+    name: str | None = Field(min_length=1, max_length=100)
+    user_id: int | None = None
