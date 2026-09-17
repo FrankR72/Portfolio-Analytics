@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from database import Base, engine
 
-from routers import user, auth
+from routers import user, auth, portfolio
 
 
 
@@ -27,3 +27,4 @@ def root():
 # Routers
 app.include_router(user.router, prefix="/api/users", tags=["Users"])
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(portfolio.router, prefix="/api/portfolios", tags=["Portfolios"])
