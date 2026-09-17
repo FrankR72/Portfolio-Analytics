@@ -9,3 +9,8 @@ uv run fastapi run dev app/main.py
 # From the frontend directory!
 uv run streamlit run app.py
 ```
+
+
+```
+DATA MODELS: https://dbdiagram.io/d/6a6a96c9067336e1de23782e
+```
