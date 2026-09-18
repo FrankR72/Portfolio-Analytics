@@ -8,6 +8,8 @@ from schemas import TransactionCreate, PortfolioPrivate
 
 import models
 
+from holding_service import summarize_holdings
+
 
 class TransactionService():
     
@@ -42,6 +44,8 @@ class TransactionService():
             new_transaction.transaction_date = datetime.combine(
                 transaction.transaction_date, time.min, tzinfo=UTC
             )
+        hoildings_list = summarize_holdings(portfolio_id, user_id)
+        number_avaliable_shares = [holding for holding in if ]
     
         self.db.add(new_transaction)
         await self.db.commit()
