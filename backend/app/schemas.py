@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
-from datetime import datetime
+from datetime import date, datetime
 from models import TransactionType
 
 
@@ -59,7 +59,7 @@ class TransactionBase(BaseModel):
 
 
 class TransactionCreate(TransactionBase):
-    pass
+    transaction_date: date | None = None
 
 
 class TransactionPrivate(TransactionBase):

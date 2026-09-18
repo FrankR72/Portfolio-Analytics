@@ -18,10 +18,11 @@ class PortfolioService():
     async def create_portfolio(self, portfolio: PortfolioCreate, user_id: int):
         
         result = await self.db.execute(
-            select(models.Portfolio).where(
-                models.Portfolio.user_id == user_id,
-                func.lower(models.Portfolio.name) == portfolio.name.lower()
-            )
+            select(models.Portfolio)
+                .where(
+                    models.Portfolio.user_id == user_id,
+                    func.lower(models.Portfolio.name) == portfolio.name.lower()
+                )
         )
         portfolio_exists = result.scalars().first()
         if portfolio_exists:
@@ -52,3 +53,22 @@ class PortfolioService():
         portfolios_list = result.scalars().all()
         
         return portfolios_list
+    
+    
+    """Visualize a portfolio"""
+    async def visualize_portfolio(self, portfolio_id: int, user_id: int):
+        result = await self.db.execute(
+            select(models.Portfolio)
+            .where(
+                models.Portfolio.id == portfolio_id,
+                models.Portfolio.user_id == user_id
+            )
+            .group_by(models.Transaction.symbol)
+        )
+        existing_portfolio = result.scalars().first()
+        if existing_portfolio is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Portfolio not found"
+            )
+        return existing_portfolio

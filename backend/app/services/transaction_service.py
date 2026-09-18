@@ -2,6 +2,7 @@ from fastapi import HTTPException, status
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import UTC, datetime, time
 
 from schemas import TransactionCreate, PortfolioPrivate
 
@@ -36,13 +37,17 @@ class TransactionService():
             quantity_actions=transaction.quantity_actions,
             price=transaction.price,
         )
+        if transaction.transaction_date is not None:
+            new_transaction.transaction_date = datetime.combine(
+                transaction.transaction_date, time.min, tzinfo=UTC
+            )
     
         self.db.add(new_transaction)
         await self.db.commit()
         await self.db.refresh(new_transaction)
         return new_transaction
         
-    
+    "Visualize all transactions for a portfolio"
     async def get_transactions(self, portfolio_id: int, user_id: int):
         portfolio_result = await self.db.execute(
             select(models.Portfolio.id).where(

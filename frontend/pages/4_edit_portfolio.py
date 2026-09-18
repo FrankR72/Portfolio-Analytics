@@ -1,3 +1,5 @@
+from datetime import date
+
 import requests
 import streamlit as st
 
@@ -43,28 +45,36 @@ if portfolio is None:
 st.title(f"Editar portafolio: {portfolio['name']}")
 st.subheader("Agregar transacción")
 
+use_custom_date = st.checkbox("Elegir la fecha de la transacción")
+
 with st.form("create_transaction", clear_on_submit=True):
     symbol = st.text_input("Símbolo", max_chars=20)
     transaction_type = st.selectbox("Tipo de transacción", ["BUY", "SELL"])
     quantity = st.number_input("Cantidad de acciones", min_value=1, step=1)
     price = st.number_input("Precio por acción", min_value=0.01, step=0.01)
+    if use_custom_date:
+        transaction_date = st.date_input("Fecha de la transacción", value=date.today())
     submitted = st.form_submit_button("Guardar transacción")
 
 if submitted:
     if not symbol.strip():
         st.error("Introduce el símbolo de la acción.")
     else:
+        payload = {
+            "symbol": symbol.strip().upper(),
+            "transaction_type": transaction_type,
+            "quantity_actions": quantity,
+            "price": price,
+        }
+        if use_custom_date:
+            payload["transaction_date"] = transaction_date.isoformat()
+
         try:
             created = requests.post(
                 TRANSACTIONS_URL,
                 params={"portfolio_id": portfolio_id},
                 headers=headers,
-                json={
-                    "symbol": symbol.strip().upper(),
-                    "transaction_type": transaction_type,
-                    "quantity_actions": quantity,
-                    "price": price,
-                },
+                json=payload,
                 timeout=5,
             )
         except requests.RequestException:

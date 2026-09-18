@@ -40,3 +40,13 @@ async def create_portfolio_endpoint(
     portfolio: PortfolioCreate,
 ):
     return await service.create_portfolio(portfolio, user.id)
+
+
+"""This Endpoint is for visualizing a portfolio."""
+@router.get("/{portfolio_id}", response_model=PortfolioPrivate)
+async def visualize_portfolio_endpoint(
+    service: Annotated[PortfolioService, Depends(get_portfolio_service)],
+    user: Annotated[User, Depends(get_current_user)],
+    portfolio_id: int,
+):
+    return await service.visualize_portfolio(portfolio_id, user.id)
