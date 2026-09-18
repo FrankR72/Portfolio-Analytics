@@ -36,6 +36,7 @@ class TransactionService():
             transaction_type=transaction.transaction_type,
             quantity_actions=transaction.quantity_actions,
             price=transaction.price,
+            total_value=transaction.quantity_actions * transaction.price
         )
         if transaction.transaction_date is not None:
             new_transaction.transaction_date = datetime.combine(

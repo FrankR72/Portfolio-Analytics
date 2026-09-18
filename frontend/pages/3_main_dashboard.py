@@ -78,55 +78,73 @@ st.subheader("Mis portafolios")
 
 if not portfolios:
     st.info("Todavía no tienes portafolios.")
+    selected_portfolio = None
+else:
+    portfolios_by_id = {portfolio["id"]: portfolio for portfolio in portfolios}
+    portfolio_ids = list(portfolios_by_id)
+    selected_id = st.session_state.get("selected_portfolio_id")
+    if selected_id not in portfolios_by_id:
+        selected_id = portfolio_ids[0]
 
-for portfolio in portfolios:
-    if st.button(portfolio["name"], key=f"portfolio_{portfolio['id']}"):
-        st.session_state["selected_portfolio_id"] = portfolio["id"]
+    selected_id = st.selectbox(
+        "Seleccionar portafolio",
+        options=portfolio_ids,
+        index=portfolio_ids.index(selected_id),
+        format_func=lambda portfolio_id: portfolios_by_id[portfolio_id]["name"],
+    )
+    st.session_state["selected_portfolio_id"] = selected_id
+    selected_portfolio = portfolios_by_id[selected_id]
 
-selected_portfolio = next(
-    (portfolio for portfolio in portfolios
-     if portfolio["id"] == st.session_state.get("selected_portfolio_id")),
-    None,
-)
 if selected_portfolio:
     st.subheader(selected_portfolio["name"])
-    if st.button("Editar portafolio"):
-        st.switch_page("pages/4_edit_portfolio.py")
+    holdings_tab, transactions_tab, closed_tab = st.tabs(
+        ["Posiciones actuales", "Transacciones", "Transacciones cerradas"]
+    )
 
-    try:
-        transactions_response = requests.get(
-            TRANSACTIONS_URL,
-            params={"portfolio_id": selected_portfolio["id"]},
-            headers={"Authorization": f"Bearer {token}"},
-            timeout=5,
-        )
-    except requests.RequestException:
-        st.error("No se pudieron cargar las transacciones.")
-    else:
-        if transactions_response.status_code == 200:
-            transactions = transactions_response.json()
-            if transactions:
-                st.subheader("Transacciones")
-                st.dataframe(
-                    [
-                        {
-                            "Fecha": transaction["transaction_date"][:10],
-                            "Símbolo": transaction["symbol"],
-                            "Tipo": transaction["transaction_type"],
-                            "Acciones": transaction["quantity_actions"],
-                            "Precio por acción": transaction["price"],
-                        }
-                        for transaction in transactions
-                    ],
-                    hide_index=True,
-                    use_container_width=True,
-                )
-            else:
-                st.info("Este portafolio todavía no tiene transacciones registradas.")
-        elif transactions_response.status_code == 401:
-            st.session_state.pop("access_token", None)
-            st.switch_page("pages/1_login.py")
-        elif transactions_response.status_code == 404:
-            st.error("El portafolio seleccionado ya no está disponible.")
-        else:
+    with holdings_tab:
+        st.info("Las posiciones actuales estarán disponibles próximamente.")
+
+    with transactions_tab:
+        if st.button("Agregar transacción"):
+            st.switch_page("pages/4_edit_portfolio.py")
+
+        try:
+            transactions_response = requests.get(
+                TRANSACTIONS_URL,
+                params={"portfolio_id": selected_portfolio["id"]},
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=5,
+            )
+        except requests.RequestException:
             st.error("No se pudieron cargar las transacciones.")
+        else:
+            if transactions_response.status_code == 200:
+                transactions = transactions_response.json()
+                if transactions:
+                    st.dataframe(
+                        [
+                            {
+                                "Fecha": transaction["transaction_date"][:10],
+                                "Símbolo": transaction["symbol"],
+                                "Tipo": transaction["transaction_type"],
+                                "Acciones": transaction["quantity_actions"],
+                                "Precio por acción": transaction["price"],
+                                "Valor total": transaction["total_value"],
+                            }
+                            for transaction in transactions
+                        ],
+                        hide_index=True,
+                        use_container_width=True,
+                    )
+                else:
+                    st.info("Este portafolio todavía no tiene transacciones registradas.")
+            elif transactions_response.status_code == 401:
+                st.session_state.pop("access_token", None)
+                st.switch_page("pages/1_login.py")
+            elif transactions_response.status_code == 404:
+                st.error("El portafolio seleccionado ya no está disponible.")
+            else:
+                st.error("No se pudieron cargar las transacciones.")
+
+    with closed_tab:
+        st.info("Las transacciones cerradas estarán disponibles próximamente.")

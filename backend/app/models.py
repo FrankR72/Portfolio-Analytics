@@ -58,6 +58,7 @@ class Transaction(Base):
     transaction_type: Mapped[TransactionType] = mapped_column(SqlEnum(TransactionType),nullable=False,)
     quantity_actions: Mapped[int] = mapped_column(Integer, nullable=False)
     price: Mapped[float] = mapped_column(Float, nullable=False)
+    total_value: Mapped[float] = mapped_column(Float, nullable=False)
     transaction_date: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),

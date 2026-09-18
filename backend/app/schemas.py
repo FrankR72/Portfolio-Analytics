@@ -68,6 +68,7 @@ class TransactionPrivate(TransactionBase):
     id: int
     transaction_date: datetime
     portfolio_id: int
+    total_value: float = Field(gt=0)
 
 
 class TransactionUpdate(BaseModel):
