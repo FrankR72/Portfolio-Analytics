@@ -59,7 +59,7 @@ class TransactionBase(BaseModel):
 
 
 class TransactionCreate(TransactionBase):
-    portfolio_id: int
+    pass
 
 
 class TransactionPrivate(TransactionBase):

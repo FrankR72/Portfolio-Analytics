@@ -6,6 +6,7 @@ from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
+from models import User
 from schemas import Token, UserPrivate
 
 from services.auth_service import AuthService
@@ -19,6 +20,12 @@ router = APIRouter()
 def get_auth_service(db: Annotated[AsyncSession, Depends(get_db)]) -> AuthService:
     return AuthService(session=db)
 
+
+async def get_current_user(
+    service: Annotated[AuthService, Depends(get_auth_service)],
+    token: Annotated[str, Depends(oauth2_scheme)],
+) -> User:
+    return await service.get_current_user(token)
 
 
 """This Endpoint is for login in and creating an JWT access token."""
@@ -39,7 +46,6 @@ async def login_to_create_access_token_endpoint(
     response_model=UserPrivate
 )
 async def get_current_user_based_on_token(
-    service: Annotated[AuthService, Depends(get_auth_service)],
-    token: Annotated[str, Depends(oauth2_scheme)]
+    user: Annotated[User, Depends(get_current_user)],
 ):
-    return await service.get_current_user(token)
+    return user

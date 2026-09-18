@@ -8,10 +8,8 @@ from database import get_db
 from models import User
 from schemas import PortfolioPrivate, PortfolioCreate
 
-from services.auth_service import AuthService
 from services.portfolio_service import PortfolioService
-
-from security import oauth2_scheme
+from routers.auth import get_current_user
 
 
 router = APIRouter()
@@ -19,13 +17,6 @@ router = APIRouter()
 
 def get_portfolio_service(db: Annotated[AsyncSession, Depends(get_db)]) -> PortfolioService:
     return PortfolioService(session=db)
-
-
-async def get_current_user(
-    db: Annotated[AsyncSession, Depends(get_db)],
-    token: Annotated[str, Depends(oauth2_scheme)],
-):
-    return await AuthService(session=db).get_current_user(token)
 
 
 """This Endpoint is for returning a list of portfolios for a user."""

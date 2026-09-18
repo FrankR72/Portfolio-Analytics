@@ -40,6 +40,8 @@ class PortfolioService():
         await self.db.refresh(new_portfolio)
         return new_portfolio
 
+    
+    """Get list of portfolios for a user"""
     async def list_portfolios(self, user_id: int):
         result = await self.db.execute(
             select(models.Portfolio)

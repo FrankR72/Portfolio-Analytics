@@ -55,10 +55,7 @@ class Transaction(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     symbol: Mapped[str] = mapped_column(String, nullable=False)
-    transaction_type: Mapped[TransactionType] = mapped_column(
-        SqlEnum(TransactionType),
-        nullable=False,
-    )
+    transaction_type: Mapped[TransactionType] = mapped_column(SqlEnum(TransactionType),nullable=False,)
     quantity_actions: Mapped[int] = mapped_column(Integer, nullable=False)
     price: Mapped[float] = mapped_column(Float, nullable=False)
     transaction_date: Mapped[datetime] = mapped_column(

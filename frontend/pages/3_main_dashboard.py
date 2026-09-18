@@ -2,6 +2,7 @@ import requests
 import streamlit as st
 
 PORTFOLIOS_URL = "http://127.0.0.1:8000/api/portfolios"
+TRANSACTIONS_URL = "http://127.0.0.1:8000/api/transactions"
 
 token = st.session_state.get("access_token")
 if not token:
@@ -89,4 +90,43 @@ selected_portfolio = next(
 )
 if selected_portfolio:
     st.subheader(selected_portfolio["name"])
-    st.write("This portfolio has no data yet.")
+    if st.button("Editar portafolio"):
+        st.switch_page("pages/4_edit_portfolio.py")
+
+    try:
+        transactions_response = requests.get(
+            TRANSACTIONS_URL,
+            params={"portfolio_id": selected_portfolio["id"]},
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=5,
+        )
+    except requests.RequestException:
+        st.error("No se pudieron cargar las transacciones.")
+    else:
+        if transactions_response.status_code == 200:
+            transactions = transactions_response.json()
+            if transactions:
+                st.subheader("Transacciones")
+                st.dataframe(
+                    [
+                        {
+                            "Fecha": transaction["transaction_date"][:10],
+                            "Símbolo": transaction["symbol"],
+                            "Tipo": transaction["transaction_type"],
+                            "Acciones": transaction["quantity_actions"],
+                            "Precio por acción": transaction["price"],
+                        }
+                        for transaction in transactions
+                    ],
+                    hide_index=True,
+                    use_container_width=True,
+                )
+            else:
+                st.info("Este portafolio todavía no tiene transacciones registradas.")
+        elif transactions_response.status_code == 401:
+            st.session_state.pop("access_token", None)
+            st.switch_page("pages/1_login.py")
+        elif transactions_response.status_code == 404:
+            st.error("El portafolio seleccionado ya no está disponible.")
+        else:
+            st.error("No se pudieron cargar las transacciones.")
