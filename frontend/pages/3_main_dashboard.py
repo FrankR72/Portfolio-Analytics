@@ -3,6 +3,11 @@ import streamlit as st
 
 PORTFOLIOS_URL = "http://127.0.0.1:8000/api/portfolios"
 TRANSACTIONS_URL = "http://127.0.0.1:8000/api/transactions"
+HOLDINGS_URL = "http://127.0.0.1:8000/api/holdings"
+
+
+def format_number(value):
+    return f"{value:,.2f}" if value is not None else "N/A"
 
 token = st.session_state.get("access_token")
 if not token:
@@ -102,7 +107,50 @@ if selected_portfolio:
     )
 
     with holdings_tab:
-        st.info("Las posiciones actuales estarán disponibles próximamente.")
+        try:
+            holdings_response = requests.get(
+                f"{HOLDINGS_URL}/{selected_portfolio['id']}",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=30,
+            )
+        except requests.RequestException:
+            st.error("No se pudieron cargar las posiciones actuales.")
+        else:
+            if holdings_response.status_code == 200:
+                holdings = holdings_response.json()
+                if holdings:
+                    st.dataframe(
+                        [
+                            {
+                                "Acción": holding["symbol"],
+                                "Acciones actuales": holding["number_current_shares"],
+                                "Costo promedio por acción": format_number(holding["avg_cost_per_share"]),
+                                "Costo base": format_number(holding["cost_bases"]),
+                                "Precio actual por acción": format_number(holding["current_price_per_share"]),
+                                "Valor actual": format_number(holding["current_value"]),
+                                "Ganancia no realizada": format_number(holding["unrealized_gain_loss"]),
+                                "Rendimiento": (
+                                    f"{format_number(holding['return_percentage'])}%"
+                                    if holding["return_percentage"] is not None
+                                    else "N/A"
+                                ),
+                            }
+                            for holding in holdings
+                        ],
+                        hide_index=True,
+                        use_container_width=True,
+                    )
+                    if any(holding["current_price_per_share"] is None for holding in holdings):
+                        st.caption("N/A indica que no se pudo obtener el precio actual.")
+                else:
+                    st.info("Este portafolio todavía no tiene posiciones abiertas.")
+            elif holdings_response.status_code == 401:
+                st.session_state.pop("access_token", None)
+                st.switch_page("pages/1_login.py")
+            elif holdings_response.status_code == 404:
+                st.error("El portafolio seleccionado ya no está disponible.")
+            else:
+                st.error("No se pudieron cargar las posiciones actuales.")
 
     with transactions_tab:
         if st.button("Agregar transacción"):

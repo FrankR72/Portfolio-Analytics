@@ -90,6 +90,37 @@ class TransactionService():
         
         return ordered_transaction_list
 
+    async def get_closed_transactions(self, portfolio_id: int, user_id: int):
+        portfolio_result = await self.db.execute(
+            select(models.Portfolio.id).where(
+                models.Portfolio.id == portfolio_id,
+                models.Portfolio.user_id == user_id,
+            )
+        )
+        if portfolio_result.scalar_one_or_none() is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Portfolio not found",
+            )
+
+        result = await self.db.execute(
+            select(models.Transaction)
+            .join(
+                models.Portfolio,
+                models.Transaction.portfolio_id == models.Portfolio.id
+            )
+            .where(
+                models.Transaction.portfolio_id == portfolio_id,
+                models.Portfolio.user_id == user_id,
+                models.Transaction.transaction_type == models.TransactionType.SELL
+            )
+            .order_by(models.Transaction.id)
+        )
+        closed_transaction_list = result.scalars().all()
+
+        return closed_transaction_list
+    
+    
 
     async def _validate_sell(
         self,
@@ -133,3 +164,5 @@ class TransactionService():
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Not enough shares to sell on that date",
                 )
+                
+        
