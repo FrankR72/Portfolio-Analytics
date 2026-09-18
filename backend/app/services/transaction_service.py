@@ -48,6 +48,7 @@ class TransactionService():
         await self.db.refresh(new_transaction)
         return new_transaction
         
+        
     "Visualize all transactions for a portfolio"
     async def get_transactions(self, portfolio_id: int, user_id: int):
         portfolio_result = await self.db.execute(

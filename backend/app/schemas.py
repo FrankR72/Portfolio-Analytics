@@ -76,3 +76,16 @@ class TransactionUpdate(BaseModel):
     transaction_type: TransactionType | None = None
     quantity_actions: int | None = Field(default=None, gt=0)
     price: float | None = Field(default=None, gt=0)
+
+
+
+# Transaction schema
+class HoldingBase(BaseModel):
+    symbol: str = Field(min_length=1)
+    number_current_shares: int = Field(gt=0)
+    avg_cost_per_share: float = Field(gt=0)
+    cost_bases: float = Field(gt=0) # total cost for all shares
+    current_price_per_share: float = Field(gt=0)
+    current_value: float = Field(gt=0) # current total value for all shares (yahoofinance)
+    unrealized_gain_loss: float
+    return_percentage: float

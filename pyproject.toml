@@ -13,4 +13,5 @@ dependencies = [
     "pyjwt>=2.13.0",
     "sqlalchemy>=2.0.51",
     "streamlit>=1.60.0",
+    "yfinance>=1.7.0",
 ]
