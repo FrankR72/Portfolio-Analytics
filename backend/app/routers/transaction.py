@@ -12,7 +12,7 @@ from routers.auth import get_current_user
 
 from models import User, Portfolio
 
-from schemas import TransactionCreate, TransactionPrivate
+from schemas import ClosedTransaction, TransactionCreate, TransactionPrivate
 
 
 
@@ -49,3 +49,12 @@ async def get_transactions_endpoint(
     user: Annotated[User, Depends(get_current_user)]
 ):
     return await service.get_transactions(portfolio_id, user.id)
+
+"""This endpoint is for getting closed transactions"""
+@router.get("/closed", response_model=list[ClosedTransaction])
+async def get_closed_transactions_endpoint(
+    service: Annotated[TransactionService, Depends(get_transaction_service)],
+    portfolio_id: int,
+    user: Annotated[User, Depends(get_current_user)]
+):
+    return await service.get_closed_transactions(portfolio_id, user.id)

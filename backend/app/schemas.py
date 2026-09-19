@@ -78,8 +78,20 @@ class TransactionUpdate(BaseModel):
     price: float | None = Field(default=None, gt=0)
 
 
+class ClosedTransaction(BaseModel):
+    transaction_date: datetime
+    symbol: str = Field(min_length=1)
+    number_shares_sold: int = Field(gt=0)
+    avg_cost_per_share: float = Field(gt=0)
+    sold_price_per_share: float = Field(gt=0)
+    total_cost_of_shares_sold: float = Field(gt=0)
+    total_sold_price: float = Field(gt=0)
+    realized_gain_loss: float
+    return_percentage: float
 
-# Transaction schema
+
+
+# Holding schema
 class HoldingBase(BaseModel):
     symbol: str = Field(min_length=1)
     number_current_shares: int = Field(gt=0)

@@ -4,18 +4,18 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import UTC, datetime, time
 
-from schemas import TransactionCreate, PortfolioPrivate
+from schemas import ClosedTransaction, TransactionCreate
 
 import models
 
 class TransactionService():
-    
+
     def __init__(self, session=AsyncSession):
         self.db = session
-        
+
     """Register new transaction"""
     async def register_transaction(self, transaction: TransactionCreate, portfolio_id: int, user_id: int):
-        
+
         result = await self.db.execute(
             select(models.Portfolio).where(
                 models.Portfolio.id == portfolio_id,
@@ -28,14 +28,14 @@ class TransactionService():
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Portfolio not found"
             )
-            
+
         transaction_datetime = (
         datetime.combine(transaction.transaction_date, time.min, tzinfo=UTC)
         if transaction.transaction_date is not None
         else datetime.now(UTC))
-        
+
         symbol = transaction.symbol.strip().upper()
-        
+
         if transaction.transaction_type == models.TransactionType.SELL:
             await self._validate_sell(
                 portfolio_id,
@@ -43,7 +43,7 @@ class TransactionService():
                 transaction.quantity_actions,
                 transaction_datetime,
             )
-            
+
         new_transaction = models.Transaction(
             portfolio_id=portfolio_id,
             symbol=symbol,
@@ -58,8 +58,8 @@ class TransactionService():
         await self.db.commit()
         await self.db.refresh(new_transaction)
         return new_transaction
-        
-        
+
+
     "Visualize all transactions for a portfolio"
     async def get_transactions(self, portfolio_id: int, user_id: int):
         portfolio_result = await self.db.execute(
@@ -87,7 +87,7 @@ class TransactionService():
             .order_by(models.Transaction.id)
             )
         ordered_transaction_list = result.scalars().all()
-        
+
         return ordered_transaction_list
 
     async def get_closed_transactions(self, portfolio_id: int, user_id: int):
@@ -105,22 +105,82 @@ class TransactionService():
 
         result = await self.db.execute(
             select(models.Transaction)
-            .join(
-                models.Portfolio,
-                models.Transaction.portfolio_id == models.Portfolio.id
+            .where(models.Transaction.portfolio_id == portfolio_id)
+            .order_by(
+                models.Transaction.transaction_date,
+                models.Transaction.id,
             )
-            .where(
-                models.Transaction.portfolio_id == portfolio_id,
-                models.Portfolio.user_id == user_id,
-                models.Transaction.transaction_type == models.TransactionType.SELL
-            )
-            .order_by(models.Transaction.id)
         )
-        closed_transaction_list = result.scalars().all()
+        transactions = result.scalars().all()
 
-        return closed_transaction_list
-    
-    
+        return self.build_closed_transactions(transactions)
+
+
+    def build_closed_transactions(
+        self,
+        transactions: list[models.Transaction],
+    ) -> list[ClosedTransaction]:
+        holdings = {}
+        closed_transactions = []
+
+        for transaction in transactions:
+            symbol = transaction.symbol
+            if symbol not in holdings:
+                holdings[symbol] = {
+                    "number_current_shares": 0,
+                    "cost_basis": 0.0,
+                }
+
+            holding = holdings[symbol]
+
+            if transaction.transaction_type == models.TransactionType.BUY:
+                holding["number_current_shares"] += transaction.quantity_actions
+                holding["cost_basis"] += (
+                    transaction.quantity_actions * transaction.price
+                )
+                continue
+
+            if transaction.transaction_type == models.TransactionType.SELL:
+                if holding["number_current_shares"] < transaction.quantity_actions:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Not enough shares to sell for {symbol}",
+                    )
+
+                avg_cost_per_share = (
+                    holding["cost_basis"] / holding["number_current_shares"]
+                )
+                total_cost_of_shares_sold = (
+                    avg_cost_per_share * transaction.quantity_actions
+                )
+                total_sold_price = transaction.price * transaction.quantity_actions
+                realized_gain_loss = (
+                    total_sold_price - total_cost_of_shares_sold
+                )
+                return_percentage = (
+                    realized_gain_loss / total_cost_of_shares_sold * 100
+                )
+
+                closed_transactions.append(
+                    ClosedTransaction(
+                        transaction_date=transaction.transaction_date,
+                        symbol=symbol,
+                        number_shares_sold=transaction.quantity_actions,
+                        avg_cost_per_share=avg_cost_per_share,
+                        sold_price_per_share=transaction.price,
+                        total_cost_of_shares_sold=total_cost_of_shares_sold,
+                        total_sold_price=total_sold_price,
+                        realized_gain_loss=realized_gain_loss,
+                        return_percentage=return_percentage,
+                    )
+                )
+
+                holding["number_current_shares"] -= transaction.quantity_actions
+                holding["cost_basis"] -= total_cost_of_shares_sold
+                if holding["number_current_shares"] == 0:
+                    holding["cost_basis"] = 0.0
+
+        return closed_transactions
 
     async def _validate_sell(
         self,
@@ -164,5 +224,3 @@ class TransactionService():
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Not enough shares to sell on that date",
                 )
-                
-        
