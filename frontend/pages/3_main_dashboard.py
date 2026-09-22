@@ -102,6 +102,8 @@ else:
 
 if selected_portfolio:
     st.subheader(selected_portfolio["name"])
+    if st.button("Analitica del portafolio", icon=":material/analytics:"):
+        st.switch_page("pages/5_portfolio_analytics.py")
     holdings_tab, transactions_tab, closed_tab = st.tabs(
         ["Posiciones actuales", "Transacciones", "Transacciones cerradas"]
     )

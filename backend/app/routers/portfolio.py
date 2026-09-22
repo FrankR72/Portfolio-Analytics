@@ -11,12 +11,17 @@ from schemas import PortfolioPrivate, PortfolioCreate
 from services.portfolio_service import PortfolioService
 from routers.auth import get_current_user
 
+from services.analytic_service import AnalyticService
+
 
 router = APIRouter()
 
 
 def get_portfolio_service(db: Annotated[AsyncSession, Depends(get_db)]) -> PortfolioService:
     return PortfolioService(session=db)
+
+def get_analytic_service(db: Annotated[AsyncSession, Depends(get_db)]) -> AnalyticService:
+    return AnalyticService(session=db)
 
 
 """This Endpoint is for returning a list of portfolios for a user."""
@@ -50,3 +55,13 @@ async def visualize_portfolio_endpoint(
     portfolio_id: int,
 ):
     return await service.visualize_portfolio(portfolio_id, user.id)
+
+
+@router.get("/{portfolio_id}/distribution")
+async def get_portfolio_distribution_endpoint(
+    service: Annotated[AnalyticService, Depends(get_analytic_service)],
+    user: Annotated[User, Depends(get_current_user)],
+    portfolio_id: int,
+):
+    total_value, distribution = await service.get_portfolio_distribution(user.id, portfolio_id)
+    return {"total_value": total_value, "distribution": distribution}
