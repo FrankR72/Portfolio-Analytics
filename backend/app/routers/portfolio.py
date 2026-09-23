@@ -56,7 +56,7 @@ async def visualize_portfolio_endpoint(
 ):
     return await service.visualize_portfolio(portfolio_id, user.id)
 
-
+"""This Endpoint is for getting the distribution of a portfolio."""
 @router.get("/{portfolio_id}/distribution")
 async def get_portfolio_distribution_endpoint(
     service: Annotated[AnalyticService, Depends(get_analytic_service)],
@@ -65,3 +65,14 @@ async def get_portfolio_distribution_endpoint(
 ):
     total_value, distribution = await service.get_portfolio_distribution(user.id, portfolio_id)
     return {"total_value": total_value, "distribution": distribution}
+
+
+"""This Endpoint is for getting the unrealized gains distribution of a portfolio."""
+@router.get("/{portfolio_id}/unrealized_gains_distribution")
+async def get_portfolio_unrealized_gains_distribution_endpoint(
+    service: Annotated[AnalyticService, Depends(get_analytic_service)],
+    user: Annotated[User, Depends(get_current_user)],
+    portfolio_id: int,
+):
+    distribution = await service.get_portfolio_unrealized_gains_distribution(user.id, portfolio_id)
+    return {"unrealized_gains_distribution": distribution}

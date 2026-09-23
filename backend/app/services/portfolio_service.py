@@ -63,7 +63,6 @@ class PortfolioService():
                 models.Portfolio.id == portfolio_id,
                 models.Portfolio.user_id == user_id
             )
-            .group_by(models.Transaction.symbol)
         )
         existing_portfolio = result.scalars().first()
         if existing_portfolio is None:
