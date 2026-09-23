@@ -8,6 +8,10 @@ from schemas import ClosedTransaction, TransactionCreate
 
 import models
 
+import asyncio
+from services.market_data_service import ticker_validation
+
+
 class TransactionService():
 
     def __init__(self, session=AsyncSession):
@@ -35,7 +39,17 @@ class TransactionService():
         else datetime.now(UTC))
 
         symbol = transaction.symbol.strip().upper()
-
+        # Add ticker validation
+        recognized = await asyncio.to_thread(ticker_validation, symbol)
+        if not recognized:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    "Ticker not recognized. Verify the ticker exists "
+                    "or try again later."
+                ),
+            )
+            
         if transaction.transaction_type == models.TransactionType.SELL:
             await self._validate_sell(
                 portfolio_id,

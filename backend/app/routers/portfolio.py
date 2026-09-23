@@ -13,6 +13,9 @@ from routers.auth import get_current_user
 
 from services.analytic_service import AnalyticService
 
+from datetime import date
+from fastapi import HTTPException
+
 
 router = APIRouter()
 
@@ -76,3 +79,23 @@ async def get_portfolio_unrealized_gains_distribution_endpoint(
 ):
     distribution = await service.get_portfolio_unrealized_gains_distribution(user.id, portfolio_id)
     return {"unrealized_gains_distribution": distribution}
+
+
+"""This Endpoint is for getting the performance of a portfolio over a specified date range."""
+@router.get("/{portfolio_id}/performance")
+async def get_portfolio_performance_endpoint(
+    portfolio_id: int,
+    start_date: date,
+    end_date: date,
+    service: Annotated[AnalyticService, Depends(get_analytic_service)],
+    user: Annotated[User, Depends(get_current_user)],
+):
+    try:
+        return await service.get_portfolio_performance(
+            user_id=user.id,
+            portfolio_id=portfolio_id,
+            start_date=start_date,
+            end_date=end_date,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
