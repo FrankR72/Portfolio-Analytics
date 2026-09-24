@@ -1,3 +1,22 @@
+"""Portfolio analytics: allocation, unrealized gains and return over time.
+
+Builds on HoldingService for loading and replaying transactions, and on
+market_data_service for current and historical prices.
+
+Unlike the other services, errors here are raised as ValueError, not
+HTTPException. The /performance route turns them into 422; the
+/distribution and /unrealized_gains_distribution routes don't catch them,
+so they become 500.
+
+Known issues (pending refactor):
+    - A failed price lookup in the two distribution methods returns 500.
+      get_current_stock_price raises ValueError and never returns None, so
+      their `if current_price is None` checks never run.
+    - get_portfolio_performance replays transactions with its own code
+      instead of position_accounting_service.
+    - Raises ValueError instead of the HTTPException used elsewhere.
+"""
+
 from datetime import date, timedelta
 
 import math
@@ -20,6 +39,18 @@ class AnalyticService:
         self.holding_service = HoldingService(session)
 
     async def get_portfolio_distribution(self, user_id: int, portfolio_id: int):
+        """Return the market value of each open position and its weight.
+
+        Returns:
+            (total_portfolio_value, {symbol: {"current_value",
+            "distribution_percentage"}}). Percentages are 0.0 when the
+            total value is 0.
+
+        Raises:
+            HTTPException: 404 if the portfolio isn't the user's, 400 if its
+                transaction history is invalid.
+            ValueError: If a current price can't be fetched (becomes 500).
+        """
         transactions = await self.holding_service.get_portfolio_transactions(
             portfolio_id=portfolio_id,
             user_id=user_id,
@@ -34,6 +65,7 @@ class AnalyticService:
                 continue
             
             current_price = await asyncio.to_thread(get_current_stock_price, symbol)
+            # Known issue: never true, the call above raises instead.
             if current_price is None:
                 raise ValueError(f"No current price available for {symbol}")
             current_value = shares * current_price
@@ -51,6 +83,17 @@ class AnalyticService:
     
     
     async def get_portfolio_unrealized_gains_distribution(self, user_id: int, portfolio_id: int):
+        """Return the unrealized gain or loss of each open position.
+
+        Returns:
+            {symbol: {"unrealized_gain_loss"}}, computed as current market
+            value minus cost basis.
+
+        Raises:
+            HTTPException: 404 if the portfolio isn't the user's, 400 if its
+                transaction history is invalid.
+            ValueError: If a current price can't be fetched (becomes 500).
+        """
         transactions = await self.holding_service.get_portfolio_transactions(
             portfolio_id=portfolio_id,
             user_id=user_id,
@@ -64,6 +107,7 @@ class AnalyticService:
                 continue
             
             current_price =  await asyncio.to_thread(get_current_stock_price, symbol)
+            # Known issue: never true, the call above raises instead.
             if current_price is None:
                 raise ValueError(f"No current price available for {symbol}")
             current_value = shares * current_price
@@ -80,6 +124,38 @@ class AnalyticService:
             self, user_id: int, portfolio_id: int,
             start_date: date, end_date: date,
         ):
+            """Return the portfolio's daily return series between two dates.
+
+            Approximate time-weighted return with end-of-day flows. Each
+            day's growth factor is (value - net flow of that day) / previous
+            value, so buying or selling doesn't count as gain or loss. The
+            factors are chained into a cumulative return. On the portfolio's
+            first day, the return is value / net investment, so the gap
+            between purchase price and that day's close is included. Prices
+            are forward-filled over weekends and holidays, and dividends are
+            ignored.
+
+            If start_date is before the first transaction, the series starts
+            at the first transaction instead ("history_limited" is True).
+
+            Returns:
+                A dict with "method" and "points", a list of {"date",
+                "holdings_value", "return_percentage"}. When there is data
+                it also has "start_date", "end_date",
+                "requested_start_date", "history_limited", "provisional"
+                (True when end_date is today, since today's close may not be
+                final) and "price_dates" (the date of the last available
+                price of each symbol still held). "points" is empty when no
+                transactions fall in the range.
+
+            Raises:
+                HTTPException: 404 if the portfolio isn't the user's.
+                ValueError: The /performance route turns it into 422. Raised
+                    for an invalid date range, a stock split or missing
+                    price in the window, a negative share count, a first
+                    day without a positive net investment, or a period where
+                    the portfolio is emptied and restarted.
+            """
             if start_date > end_date or end_date > date.today():
                 raise ValueError("Use start <= end, with end no later than today")
 
@@ -123,8 +199,12 @@ class AnalyticService:
 
             for timestamp in days:
                 day = timestamp.date()
+                # Net money put in today: positive for buys, negative for sells.
                 flow = 0.0
 
+                # Apply every transaction up to and including today. Only
+                # today's transactions count as flow; earlier ones (before
+                # the baseline) just set the starting share counts.
                 while position < len(transactions):
                     transaction = transactions[position]
                     transaction_day = transaction.transaction_date.date()

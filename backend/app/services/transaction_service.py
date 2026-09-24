@@ -1,3 +1,14 @@
+"""BUY/SELL transactions of a portfolio and the gains realized by sells.
+
+Registers new transactions (checking the ticker against yfinance and
+rejecting oversells), lists them, and computes realized gains per SELL with
+position_accounting_service.
+
+Known issues (pending refactor):
+    - Creating a transaction returns 200 instead of 201.
+    - The portfolio ownership check is re-implemented in every method.
+"""
+
 from fastapi import HTTPException, status
 
 from sqlalchemy import select, func
@@ -17,12 +28,24 @@ from .position_accounting_service import Position, apply_transaction
 
 class TransactionService():
 
-    def __init__(self, session=AsyncSession):
+    def __init__(self, session:AsyncSession):
         self.db = session
 
-    """Register new transaction"""
     async def register_transaction(self, transaction: TransactionCreate, portfolio_id: int, user_id: int):
+        """Validate and store a new BUY or SELL transaction.
 
+        The symbol is stripped and uppercased. A given date is stored as
+        midnight UTC of that day; without a date, the current time is used.
+        total_value is computed as quantity * price.
+
+        Returns:
+            The stored models.Transaction.
+
+        Raises:
+            HTTPException: 404 if the portfolio isn't the user's, 422 if the
+                ticker can't be priced on yfinance, 400 if a SELL exceeds
+                the shares held on its date.
+        """
         result = await self.db.execute(
             select(models.Portfolio).where(
                 models.Portfolio.id == portfolio_id,
@@ -77,8 +100,15 @@ class TransactionService():
         return new_transaction
 
 
-    "Visualize all transactions for a portfolio"
     async def get_transactions(self, portfolio_id: int, user_id: int):
+        """Return all transactions of a portfolio, ordered by id.
+
+        The order is insertion order, not date order, so a backdated
+        transaction appears after later-dated ones.
+
+        Raises:
+            HTTPException: 404 if the portfolio isn't the user's.
+        """
         portfolio_result = await self.db.execute(
             select(models.Portfolio.id).where(
                 models.Portfolio.id == portfolio_id,
@@ -108,6 +138,12 @@ class TransactionService():
         return ordered_transaction_list
 
     async def get_closed_transactions(self, portfolio_id: int, user_id: int):
+        """Return the realized gain or loss of every SELL in a portfolio.
+
+        Raises:
+            HTTPException: 404 if the portfolio isn't the user's, 400 if its
+                transaction history is invalid.
+        """
         portfolio_result = await self.db.execute(
             select(models.Portfolio.id).where(
                 models.Portfolio.id == portfolio_id,
@@ -134,6 +170,18 @@ class TransactionService():
 
 
     def build_closed_transactions(self, transactions: list[models.Transaction]):
+        """Replay transactions and collect one ClosedTransaction per SELL.
+
+        Args:
+            transactions: Ordered by (transaction_date, id).
+
+        Returns:
+            list[ClosedTransaction] in replay order.
+
+        Raises:
+            HTTPException: 400 if the history is invalid, for example a sell
+                of more shares than were held at that point.
+        """
         positions = {}
         closed_transactions = []
 
@@ -158,6 +206,21 @@ class TransactionService():
         quantity: int,
         sale_at: datetime,
     ) -> None:
+        """Check that a new SELL never makes the share count negative.
+
+        Replays the symbol's share count through time with the new sale
+        inserted at sale_at. A backdated sell must be covered by shares held
+        at its date, and must not leave a later existing sell uncovered.
+
+        Raises:
+            HTTPException: 400 if the share count drops below zero at any
+                point.
+
+        Known issues (pending refactor):
+            - Uses its own replay instead of position_accounting_service.
+            - Check-then-insert race: two sells submitted at the same moment
+              can both pass the check.
+        """
         result = await self.db.execute(
             select(models.Transaction).where(
                 models.Transaction.portfolio_id == portfolio_id,

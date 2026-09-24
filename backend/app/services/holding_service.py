@@ -1,3 +1,14 @@
+"""Open positions of a portfolio, valued at current market prices.
+
+Loads a portfolio's transactions, replays them with
+position_accounting_service to get shares and cost basis per symbol, and
+adds live prices from market_data_service. AnalyticService reuses the
+loading and replay steps.
+
+Known issues (pending refactor):
+    The portfolio ownership check is re-implemented here instead of being
+    a shared dependency.
+"""
 
 from fastapi import HTTPException, status
 
@@ -21,8 +32,17 @@ class HoldingService:
         self.db = session
 
 
-    "Data Base retrieval of transactions"
     async def get_portfolio_transactions(self, portfolio_id: int , user_id: int):
+        """Load all transactions of a portfolio owned by the user.
+
+        Returns:
+            Transactions ordered by (transaction_date, id), the order that
+            build_holdings_dictionary and apply_transaction require.
+
+        Raises:
+            HTTPException: 404 if the portfolio doesn't exist or belongs to
+                another user.
+        """
         ownership = await self.db.execute(
             select(models.Portfolio)
             .where(models.Portfolio.id == portfolio_id,
@@ -46,8 +66,21 @@ class HoldingService:
         list_of_transactions = result.scalars().all()
         return list_of_transactions
 
-    "Form current holdings dictionary based on all transactions"
     def build_holdings_dictionary(self, transactions: list[models.Transaction]):
+        """Replay transactions into one entry per symbol ever traded.
+
+        Args:
+            transactions: Ordered by (transaction_date, id).
+
+        Returns:
+            {symbol: {"symbol", "number_current_shares",
+            "avg_cost_per_share", "cost_bases"}}. Symbols that were fully
+            sold are included with 0 shares; callers filter them out.
+
+        Raises:
+            HTTPException: 400 if the history is invalid, for example a sell
+                of more shares than were held at that point.
+        """
         positions = {}
 
         # Transactions must already be ordered by date, then ID.
@@ -70,8 +103,17 @@ class HoldingService:
         }
 
 
-    "Enrich holdings dictionary with data on current prices"
     async def enrich_holdings_with_current_prices(self, holdings: dict) -> dict:
+        """Add current price, value and unrealized gain to each holding.
+
+        Modifies the given dict in place and also returns it. Adds
+        "current_price_per_share", "current_value", "unrealized_gain_loss"
+        and "return_percentage". If a price lookup fails, those fields are
+        set to None for that symbol instead of failing the whole request.
+        Symbols with 0 shares are skipped and get no new fields.
+
+        Fetches one symbol at a time from yfinance.
+        """
         for symbol, data in holdings.items():
             if data["number_current_shares"] == 0:
                 continue
@@ -95,7 +137,15 @@ class HoldingService:
         portfolio_id: int,
         user_id: int
     ) -> list[HoldingBase]:
-        
+        """Return the open positions of a portfolio with live prices.
+
+        Backs GET /api/holdings/{portfolio_id}. Fully sold symbols are
+        left out.
+
+        Raises:
+            HTTPException: 404 if the portfolio isn't the user's, 400 if its
+                transaction history is invalid.
+        """
         list_of_transactions = await self.get_portfolio_transactions(portfolio_id, user_id)
         holdings_dictionary = self.build_holdings_dictionary(list_of_transactions)
         # Remove holdings with zero shares before enriching with current prices

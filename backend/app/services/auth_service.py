@@ -1,3 +1,10 @@
+"""Log-in and resolution of the current user from a JWT.
+
+Tokens are created and verified in security.py; this service looks up the
+user they belong to. Every failure is reported as 401 with a
+WWW-Authenticate: Bearer header.
+"""
+
 from fastapi import HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 
@@ -25,8 +32,16 @@ class AuthService:
         self.db = session
 
     async def login_to_create_access_token(self, form_data: OAuth2PasswordRequestForm):
-        """Login user and create access token"""
-        # Note: OAuth2PasswordRequestForm uses "username" field, but we treat it as email
+        """Check the credentials and return a new bearer token.
+
+        The form's "username" field holds the user's email (matched
+        case-insensitively). The JWT's "sub" claim is the user id, and the
+        token expires after settings.access_token_expire_minutes.
+
+        Raises:
+            HTTPException: 401 if the email is unknown or the password is
+                wrong (same message for both).
+        """
         result = await self.db.execute(
             select(models.User).where(
                 func.lower(models.User.email) == form_data.username.lower()
@@ -51,7 +66,15 @@ class AuthService:
     
     
     async def get_current_user(self, token: str):
-        """Get currently authenticated user"""
+        """Return the User that a bearer token belongs to.
+
+        Used by routers.auth.get_current_user, the dependency of every
+        protected route.
+
+        Raises:
+            HTTPException: 401 if the token is invalid or expired, its "sub"
+                isn't an integer id, or the user no longer exists.
+        """
         user_id = verify_access_token(token)
         
         if user_id is None:

@@ -1,3 +1,12 @@
+"""User sign-up.
+
+Known issues (pending refactor):
+    - A duplicate username returns 406 instead of 409.
+    - Username and email uniqueness is checked case-insensitively in Python,
+      but the database constraint is case-sensitive, so two requests at the
+      same moment can create duplicates.
+"""
+
 from fastapi import HTTPException, status
 
 from sqlalchemy import select, func
@@ -15,8 +24,16 @@ class UserService:
     def __init__(self, session: AsyncSession):
         self.db = session
 
-    """Create new user"""
     async def create_user(self, user: UserCreate):
+        """Register a new user with a hashed password.
+
+        The email is stored lowercased; the username keeps its original
+        case.
+
+        Raises:
+            HTTPException: 406 if the username is taken, 400 if the email is
+                already registered (both compared case-insensitively).
+        """
         result = await self.db.execute(
             select(models.User).where(
                 func.lower(models.User.username) == user.username.lower()
