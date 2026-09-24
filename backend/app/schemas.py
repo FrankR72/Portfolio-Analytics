@@ -45,9 +45,13 @@ class PortfolioPrivate(PortfolioBase):
     id: int
     user_id: int
 
-class PortfolioUpdate(PortfolioBase):
-    name: str | None = Field(min_length=1, max_length=100)
-    user_id: int | None = None
+class PortfolioUpdate(BaseModel):
+    model_config = ConfigDict(
+        str_strip_whitespace=True,
+        extra="forbid",
+    )
+
+    name: str = Field(min_length=1, max_length=100)
 
 
 # Transaction schema
@@ -101,3 +105,4 @@ class HoldingBase(BaseModel):
     current_value: float | None = Field(default=None, gt=0) # current total value for all shares (yahoofinance)
     unrealized_gain_loss: float | None = Field(default=None)
     return_percentage: float | None = Field(default=None)
+    

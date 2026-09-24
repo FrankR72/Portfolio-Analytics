@@ -54,6 +54,60 @@ class PortfolioService():
         
         return portfolios_list
     
+    """Delete a portfolio"""
+    async def delete_portfolio(self, portfolio_id: int, user_id: int):
+        result = await self.db.execute(
+            select(models.Portfolio)
+            .where(
+                models.Portfolio.id == portfolio_id,
+                models.Portfolio.user_id == user_id
+            )
+        )
+        existing_portfolio = result.scalars().first()
+        if existing_portfolio is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Portfolio not found"
+            )
+        
+        await self.db.delete(existing_portfolio)
+        await self.db.commit()
+        
+        
+    """Update a portfolio"""
+    async def update_portfolio(self, portfolio_id: int, user_id: int, new_name: str):
+        result = await self.db.execute(
+            select(models.Portfolio).where(
+                models.Portfolio.id == portfolio_id,
+                models.Portfolio.user_id == user_id,
+            )
+        )
+        portfolio = result.scalars().first()
+    
+        if portfolio is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Portfolio not found",
+            )
+    
+        duplicate = await self.db.execute(
+            select(models.Portfolio.id).where(
+                models.Portfolio.user_id == user_id,
+                models.Portfolio.id != portfolio_id,
+                func.lower(models.Portfolio.name) == new_name.lower(),
+            ).limit(1)
+        )
+    
+        if duplicate.scalar_one_or_none() is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="You already have a portfolio with that name",
+            )
+    
+        portfolio.name = new_name
+        await self.db.commit()
+        await self.db.refresh(portfolio)
+        return portfolio    
     
     """Visualize a portfolio"""
     async def visualize_portfolio(self, portfolio_id: int, user_id: int):

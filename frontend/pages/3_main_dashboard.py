@@ -9,6 +9,89 @@ HOLDINGS_URL = "http://127.0.0.1:8000/api/holdings"
 def format_number(value):
     return f"{value:,.2f}" if value is not None else "N/A"
 
+@st.dialog("Cambiar nombre del portafolio")
+def rename_portfolio(portfolio):
+    with st.form(f"rename_portfolio_{portfolio['id']}"):
+        name = st.text_input("Nombre", value=portfolio["name"], max_chars=100)
+        cancel_column, save_column = st.columns(2)
+        cancel = cancel_column.form_submit_button("Cancelar", width="stretch")
+        save = save_column.form_submit_button("Guardar", type="primary", icon=":material/save:", width="stretch")
+    if cancel:
+        st.rerun()
+    if not save:
+        return
+    name = name.strip()
+    if not name:
+        st.error("El nombre no puede estar vacio.")
+        return
+    if name == portfolio["name"]:
+        st.rerun()
+    try:
+        with st.spinner("Guardando nombre..."):
+            updated = requests.put(
+                f"{PORTFOLIOS_URL}/{portfolio['id']}",
+                headers={"Authorization": f"Bearer {st.session_state.get('access_token', '')}"},
+                json={"name": name}, timeout=15,
+            )
+    except requests.RequestException:
+        st.error("No se pudo confirmar el cambio. Revisa el nombre en el dashboard antes de intentarlo de nuevo.")
+        return
+    if updated.status_code == 200:
+        st.session_state["selected_portfolio_id"] = portfolio["id"]
+        st.session_state["portfolio_rename_notice"] = "Nombre del portafolio actualizado."
+        st.rerun()
+    elif updated.status_code == 401:
+        st.session_state.pop("access_token", None)
+        st.switch_page("pages/1_login.py")
+    elif updated.status_code == 409:
+        st.error("Ya tienes un portafolio con ese nombre.")
+    elif updated.status_code == 422:
+        st.error("Introduce un nombre valido de 1 a 100 caracteres.")
+    elif updated.status_code == 404:
+        st.error("El portafolio ya no esta disponible. Vuelve al dashboard.")
+    else:
+        st.error("No se pudo actualizar el nombre. Intenta de nuevo mas tarde.")
+
+
+@st.dialog("Eliminar portafolio")
+def confirm_portfolio_deletion(portfolio):
+    st.write(f"Eliminar: {portfolio['name']}")
+    st.warning(
+        "Estas seguro? Se eliminara este portafolio y todas sus transacciones. "
+        "Todos los datos de este portafolio se perderan permanentemente. "
+        "Esta accion no se puede deshacer."
+    )
+    cancel_column, delete_column = st.columns(2)
+    if cancel_column.button("Cancelar", width="stretch"):
+        st.rerun()
+    if delete_column.button("Eliminar definitivamente", type="primary", icon=":material/delete:", width="stretch"):
+        try:
+            with st.spinner("Eliminando portafolio..."):
+                deleted = requests.delete(
+                    f"{PORTFOLIOS_URL}/{portfolio['id']}",
+                    headers={"Authorization": f"Bearer {st.session_state.get('access_token', '')}"},
+                    timeout=15,
+                )
+        except requests.RequestException:
+            st.error("No se pudo confirmar la eliminacion. Cierra este dialogo y revisa la lista de portafolios antes de intentarlo de nuevo.")
+            return
+        if deleted.status_code == 401:
+            st.session_state.pop("access_token", None)
+            st.switch_page("pages/1_login.py")
+        elif deleted.status_code in (204, 404):
+            st.session_state.pop("selected_portfolio_id", None)
+            st.session_state.pop("performance_cache", None)
+            for key in list(st.session_state):
+                if key in (f"return_period_{portfolio['id']}", f"history_start_{portfolio['id']}", f"history_end_{portfolio['id']}") or key.startswith(f"return_chart_{portfolio['id']}_"):
+                    st.session_state.pop(key, None)
+            st.session_state["portfolio_delete_notice"] = (
+                "Portafolio eliminado junto con todas sus transacciones."
+                if deleted.status_code == 204 else "El portafolio ya no esta disponible."
+            )
+            st.rerun()
+        else:
+            st.error("No se pudo eliminar el portafolio. Intenta de nuevo mas tarde.")
+
 token = st.session_state.get("access_token")
 if not token:
     st.switch_page("pages/1_login.py")
@@ -32,6 +115,12 @@ st.title(f"Welcome, {user['username']}")
 
 
 st.write(user["email"])
+
+if notice := st.session_state.pop("portfolio_delete_notice", None):
+    st.info(notice)
+
+if notice := st.session_state.pop("portfolio_rename_notice", None):
+    st.success(notice)
 
 if st.button("Crear portafolio"):
     st.session_state["show_create_portfolio"] = True
@@ -102,8 +191,13 @@ else:
 
 if selected_portfolio:
     st.subheader(selected_portfolio["name"])
-    if st.button("Analitica del portafolio", icon=":material/analytics:"):
+    analytics_action, rename_action, delete_action = st.columns([4, 1, 1])
+    if analytics_action.button("Analitica del portafolio", icon=":material/analytics:"):
         st.switch_page("pages/5_portfolio_analytics.py")
+    if rename_action.button("", icon=":material/edit:", help="Cambiar nombre del portafolio", key="open_rename_portfolio"):
+        rename_portfolio(selected_portfolio)
+    if delete_action.button("", icon=":material/delete:", help="Eliminar portafolio", key="open_delete_portfolio"):
+        confirm_portfolio_deletion(selected_portfolio)
     holdings_tab, transactions_tab, closed_tab = st.tabs(
         ["Posiciones actuales", "Transacciones", "Transacciones cerradas"]
     )

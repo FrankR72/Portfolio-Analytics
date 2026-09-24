@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
 from models import User
-from schemas import PortfolioPrivate, PortfolioCreate
+from schemas import PortfolioPrivate, PortfolioCreate, PortfolioUpdate
 
 from services.portfolio_service import PortfolioService
 from routers.auth import get_current_user
@@ -50,6 +50,26 @@ async def create_portfolio_endpoint(
     return await service.create_portfolio(portfolio, user.id)
 
 
+"""This Endpoint is for updating a portfolio."""
+@router.put("/{portfolio_id}", response_model=PortfolioPrivate)
+async def update_portfolio_endpoint(
+    service: Annotated[PortfolioService, Depends(get_portfolio_service)],
+    user: Annotated[User, Depends(get_current_user)],
+    updates: PortfolioUpdate,
+    portfolio_id: int,
+):
+    return await service.update_portfolio(portfolio_id, user.id, new_name=updates.name)
+
+
+"""This Endpoint is for deleting a portfolio."""
+@router.delete("/{portfolio_id}", status_code=204)
+async def delete_portfolio_endpoint(
+    service: Annotated[PortfolioService, Depends(get_portfolio_service)],
+    user: Annotated[User, Depends(get_current_user)],
+    portfolio_id: int,
+):
+    await service.delete_portfolio(portfolio_id, user.id)
+
 """This Endpoint is for visualizing a portfolio."""
 @router.get("/{portfolio_id}", response_model=PortfolioPrivate)
 async def visualize_portfolio_endpoint(
@@ -58,6 +78,7 @@ async def visualize_portfolio_endpoint(
     portfolio_id: int,
 ):
     return await service.visualize_portfolio(portfolio_id, user.id)
+
 
 """This Endpoint is for getting the distribution of a portfolio."""
 @router.get("/{portfolio_id}/distribution")

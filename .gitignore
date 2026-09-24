@@ -23,3 +23,8 @@ Thumbs.db
 
 # Claude Code project instructions (local only)
 CLAUDE.md
+
+
+
+# Database
+*.db
