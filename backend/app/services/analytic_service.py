@@ -159,7 +159,14 @@ class AnalyticService:
                         raise ValueError(f"Missing valid price for {symbol} on {day}")
                     value += quantity * price
 
-                if previous_value is not None:
+                if previous_value is None and baseline_date == first_date:
+                    # Include the initial purchase-to-market gain or loss.
+                    if flow <= 0:
+                        raise ValueError(
+                            "Initial-day return requires a positive net investment"
+                        )
+                    growth = value / flow
+                elif previous_value is not None:
                     if previous_value > 0:
                         daily_factor = (value - flow) / previous_value
                         if not math.isfinite(daily_factor) or daily_factor <= 0:
