@@ -13,6 +13,8 @@ from services.market_data_service import get_current_stock_price
 
 from schemas import HoldingBase
 
+from .position_accounting_service import Position, apply_transaction
+
 
 class HoldingService:
     def __init__(self, session: AsyncSession):
@@ -46,33 +48,26 @@ class HoldingService:
 
     "Form current holdings dictionary based on all transactions"
     def build_holdings_dictionary(self, transactions: list[models.Transaction]):
-        holdings = {}
+        positions = {}
+
+        # Transactions must already be ordered by date, then ID.
         for transaction in transactions:
-            symbol = transaction.symbol
-            if symbol not in holdings:
-                holdings[symbol] = {
-                    "symbol": symbol,
-                    "number_current_shares": 0,
-                    "avg_cost_per_share": 0.0,
-                    "cost_bases": 0.0,
-                }
-            data = holdings[symbol]
-            if transaction.transaction_type == models.TransactionType.BUY:
-                data["cost_bases"] += transaction.price * transaction.quantity_actions
-                data["number_current_shares"] += transaction.quantity_actions
-                data["avg_cost_per_share"] = data["cost_bases"] / data["number_current_shares"]
-            elif transaction.transaction_type == models.TransactionType.SELL:
-                if data["number_current_shares"] < transaction.quantity_actions:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"Not enough shares to sell for {symbol}"
-                    )
-                data["number_current_shares"] -= transaction.quantity_actions
-                data["cost_bases"] -= data["avg_cost_per_share"] * transaction.quantity_actions
-                if data["number_current_shares"] == 0:
-                    data["avg_cost_per_share"] = 0.0
-                    data["cost_bases"] = 0.0
-        return holdings
+            position = positions.setdefault(transaction.symbol, Position())
+
+            try:
+                apply_transaction(position, transaction)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        return {
+            symbol: {
+                "symbol": symbol,
+                "number_current_shares": position.shares,
+                "avg_cost_per_share": position.average_cost,
+                "cost_bases": position.cost_basis,
+            }
+            for symbol, position in positions.items()
+        }
 
 
     "Enrich holdings dictionary with data on current prices"

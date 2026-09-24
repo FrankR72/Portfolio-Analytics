@@ -9,7 +9,10 @@ from schemas import ClosedTransaction, TransactionCreate
 import models
 
 import asyncio
-from services.market_data_service import ticker_validation
+from .market_data_service import ticker_validation
+
+from .position_accounting_service import Position, apply_transaction
+
 
 
 class TransactionService():
@@ -130,69 +133,21 @@ class TransactionService():
         return self.build_closed_transactions(transactions)
 
 
-    def build_closed_transactions(
-        self,
-        transactions: list[models.Transaction],
-    ) -> list[ClosedTransaction]:
-        holdings = {}
+    def build_closed_transactions(self, transactions: list[models.Transaction]):
+        positions = {}
         closed_transactions = []
 
+        # Transactions must already be ordered by date, then ID.
         for transaction in transactions:
-            symbol = transaction.symbol
-            if symbol not in holdings:
-                holdings[symbol] = {
-                    "number_current_shares": 0,
-                    "cost_basis": 0.0,
-                }
+            position = positions.setdefault(transaction.symbol, Position())
 
-            holding = holdings[symbol]
+            try:
+                sale = apply_transaction(position, transaction)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-            if transaction.transaction_type == models.TransactionType.BUY:
-                holding["number_current_shares"] += transaction.quantity_actions
-                holding["cost_basis"] += (
-                    transaction.quantity_actions * transaction.price
-                )
-                continue
-
-            if transaction.transaction_type == models.TransactionType.SELL:
-                if holding["number_current_shares"] < transaction.quantity_actions:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"Not enough shares to sell for {symbol}",
-                    )
-
-                avg_cost_per_share = (
-                    holding["cost_basis"] / holding["number_current_shares"]
-                )
-                total_cost_of_shares_sold = (
-                    avg_cost_per_share * transaction.quantity_actions
-                )
-                total_sold_price = transaction.price * transaction.quantity_actions
-                realized_gain_loss = (
-                    total_sold_price - total_cost_of_shares_sold
-                )
-                return_percentage = (
-                    realized_gain_loss / total_cost_of_shares_sold * 100
-                )
-
-                closed_transactions.append(
-                    ClosedTransaction(
-                        transaction_date=transaction.transaction_date,
-                        symbol=symbol,
-                        number_shares_sold=transaction.quantity_actions,
-                        avg_cost_per_share=avg_cost_per_share,
-                        sold_price_per_share=transaction.price,
-                        total_cost_of_shares_sold=total_cost_of_shares_sold,
-                        total_sold_price=total_sold_price,
-                        realized_gain_loss=realized_gain_loss,
-                        return_percentage=return_percentage,
-                    )
-                )
-
-                holding["number_current_shares"] -= transaction.quantity_actions
-                holding["cost_basis"] -= total_cost_of_shares_sold
-                if holding["number_current_shares"] == 0:
-                    holding["cost_basis"] = 0.0
+            if sale is not None:
+                closed_transactions.append(ClosedTransaction(**sale))
 
         return closed_transactions
 
