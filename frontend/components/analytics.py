@@ -1,3 +1,5 @@
+"""Analytics tab: return curve, allocation and unrealized-gains charts."""
+
 from datetime import date, datetime, timedelta
 import math
 
@@ -6,77 +8,34 @@ import pandas as pd
 import requests
 import streamlit as st
 
+from components.transactions import add_transaction_dialog
+from session import auth_headers, end_session, get_token
+
 
 PORTFOLIOS_URL = "http://127.0.0.1:8000/api/portfolios"
 
-token = st.session_state.get("access_token")
-if not token:
-    st.switch_page("pages/1_login.py")
-
-if st.button("Volver al portafolio", icon=":material/arrow_back:"):
-    st.switch_page("pages/3_main_dashboard.py")
-
-portfolio_id = st.session_state.get("selected_portfolio_id")
-if portfolio_id is None:
-    st.info("Selecciona un portafolio en el dashboard.")
-    st.stop()
-
-if st.button("Actualizar", icon=":material/refresh:", help="Actualizar valores del portafolio"):
-    st.session_state.pop("performance_cache", None)
-headers = {"Authorization": f"Bearer {token}"}
-
 
 def get_data(url, optional=False):
+    """GET a JSON payload. On failure show an error (unless optional) and
+    return None."""
     try:
-        response = requests.get(url, headers=headers, timeout=30)
+        response = requests.get(url, headers=auth_headers(), timeout=30)
         if response.status_code == 401:
-            st.session_state.pop("access_token", None)
-            st.switch_page("pages/1_login.py")
+            end_session()
         if response.status_code == 404:
-            if optional:
-                return None
-            st.error("El portafolio seleccionado ya no esta disponible.")
-            st.stop()
+            if not optional:
+                st.error("El portafolio seleccionado ya no esta disponible.")
+            return None
         response.raise_for_status()
         return response.json()
     except (requests.RequestException, ValueError):
-        if optional:
-            return None
-        st.error("No se pudo cargar la analitica. Intenta actualizar de nuevo.")
-        st.stop()
+        if not optional:
+            st.error("No se pudo cargar la analitica. Intenta actualizar de nuevo.")
+        return None
 
-
-with st.spinner("Cargando analitica..."):
-    portfolio = get_data(f"{PORTFOLIOS_URL}/{portfolio_id}")
-    payload = get_data(f"{PORTFOLIOS_URL}/{portfolio_id}/distribution")
-
-st.title(f"{portfolio['name']} / Analitica")
-
-try:
-    total = float(payload["total_value"])
-    rows = [
-        {
-            "Accion": symbol,
-            "Valor actual": float(data["current_value"]),
-            "Asignacion (%)": float(data["distribution_percentage"]),
-        }
-        for symbol, data in payload["distribution"].items()
-    ]
-    if not math.isfinite(total) or any(
-        not math.isfinite(row[key])
-        for row in rows
-        for key in ("Valor actual", "Asignacion (%)")
-    ):
-        raise ValueError("Invalid values")
-except (KeyError, TypeError, ValueError, AttributeError):
-    st.error("El servidor devolvio valores incompletos. Intenta actualizar de nuevo.")
-    st.stop()
-
-st.metric("Valor total de las posiciones", f"{total:,.2f}")
-st.caption(f"Datos consultados: {datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S %Z')}")
 
 @st.fragment
-def show_portfolio_history():
+def show_portfolio_history(portfolio_id):
     st.subheader("Rendimiento del portafolio")
     period = st.segmented_control(
         "Periodo", ["1W", "1M", "3M", "6M", "YTD", "1Y", "All"],
@@ -87,16 +46,14 @@ def show_portfolio_history():
     cache = st.session_state.setdefault("performance_cache", {})
 
     def fetch(url, params):
-        cache_key = ("dates_v2", token, url, tuple(sorted(params.items())))
+        cache_key = ("dates_v2", get_token(), url, tuple(sorted(params.items())))
         cached = cache.get(cache_key)
         now = datetime.now().timestamp()
         if cached and now - cached[0] < 300:
             return cached[1]
-        response = requests.get(url, params=params, headers=headers, timeout=60)
+        response = requests.get(url, params=params, headers=auth_headers(), timeout=60)
         if response.status_code == 401:
-            st.session_state.pop("access_token", None)
-            st.session_state.pop("performance_cache", None)
-            st.switch_page("pages/1_login.py")
+            end_session()
         if response.status_code == 422:
             detail = response.json().get("detail")
             raise ValueError(detail if isinstance(detail, str) else "Periodo no disponible.")
@@ -205,94 +162,128 @@ def show_portfolio_history():
         period_column.metric(period_label, f"{last['return_percentage']:+.2f}%")
 
 
-show_portfolio_history()
+def render_analytics(portfolio):
+    portfolio_id = portfolio["id"]
 
-if not rows:
-    st.info("Este portafolio todavia no tiene posiciones abiertas.")
-    if st.button("Agregar transaccion", icon=":material/add:"):
-        st.switch_page("pages/4_edit_portfolio.py")
-    st.stop()
+    if st.button("Actualizar", icon=":material/refresh:", help="Actualizar valores del portafolio"):
+        st.session_state.pop("performance_cache", None)
 
-df = pd.DataFrame(rows).sort_values("Asignacion (%)", ascending=False)
-with st.spinner("Cargando ganancias no realizadas..."):
-    gains_payload = get_data(
-        f"{PORTFOLIOS_URL}/{portfolio_id}/unrealized_gains_distribution",
-        optional=True,
-    )
-gains = None
-try:
-    gains = {
-        symbol: float(data["unrealized_gain_loss"])
-        for symbol, data in gains_payload["unrealized_gains_distribution"].items()
-    }
-    if set(gains) != set(df["Accion"]) or not all(math.isfinite(value) for value in gains.values()):
-        raise ValueError("Incomplete gains")
-except (KeyError, TypeError, ValueError, AttributeError):
+    with st.spinner("Cargando analitica..."):
+        payload = get_data(f"{PORTFOLIOS_URL}/{portfolio_id}/distribution")
+    if payload is None:
+        return
+
+    try:
+        total = float(payload["total_value"])
+        rows = [
+            {
+                "Accion": symbol,
+                "Valor actual": float(data["current_value"]),
+                "Asignacion (%)": float(data["distribution_percentage"]),
+            }
+            for symbol, data in payload["distribution"].items()
+        ]
+        if not math.isfinite(total) or any(
+            not math.isfinite(row[key])
+            for row in rows
+            for key in ("Valor actual", "Asignacion (%)")
+        ):
+            raise ValueError("Invalid values")
+    except (KeyError, TypeError, ValueError, AttributeError):
+        st.error("El servidor devolvio valores incompletos. Intenta actualizar de nuevo.")
+        return
+
+    st.metric("Valor total de las posiciones", f"{total:,.2f}")
+    st.caption(f"Datos consultados: {datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S %Z')}")
+
+    show_portfolio_history(portfolio_id)
+
+    if not rows:
+        st.info("Este portafolio todavia no tiene posiciones abiertas.")
+        if st.button("Agregar transaccion", icon=":material/add:", key="analytics_add_transaction"):
+            add_transaction_dialog(portfolio)
+        return
+
+    df = pd.DataFrame(rows).sort_values("Asignacion (%)", ascending=False)
+    with st.spinner("Cargando ganancias no realizadas..."):
+        gains_payload = get_data(
+            f"{PORTFOLIOS_URL}/{portfolio_id}/unrealized_gains_distribution",
+            optional=True,
+        )
     gains = None
+    try:
+        gains = {
+            symbol: float(data["unrealized_gain_loss"])
+            for symbol, data in gains_payload["unrealized_gains_distribution"].items()
+        }
+        if set(gains) != set(df["Accion"]) or not all(math.isfinite(value) for value in gains.values()):
+            raise ValueError("Incomplete gains")
+    except (KeyError, TypeError, ValueError, AttributeError):
+        gains = None
 
-colors = alt.Scale(domain=df["Accion"].tolist(), scheme="tableau10")
-allocation_column, gains_column = st.columns(2)
-allocation_column.subheader("Distribucion de las posiciones")
-if total > 0 and (df["Asignacion (%)"] >= 0).all():
-    chart = (
-        alt.Chart(df.assign(Orden=range(len(df))))
-        .mark_arc(stroke="white", strokeWidth=2)
-        .encode(
-            theta=alt.Theta("Asignacion (%):Q", stack=True),
-            color=alt.Color("Accion:N", sort=df["Accion"].tolist(), scale=colors),
-            order=alt.Order("Orden:Q"),
-            tooltip=["Accion:N", alt.Tooltip("Valor actual:Q", format=",.2f"), alt.Tooltip("Asignacion (%):Q", format=".2f")],
-        )
-        .properties(height=360)
-    )
-    allocation_column.altair_chart(chart, width="stretch")
-else:
-    allocation_column.info("La distribucion grafica requiere un valor total positivo y asignaciones no negativas.")
-
-gains_column.subheader("Ganancias no realizadas positivas")
-if gains is None:
-    gains_column.error("No se pudieron cargar las ganancias. Intenta actualizar de nuevo.")
-else:
-    df["Ganancia/perdida no realizada"] = df["Accion"].map(gains)
-    positive = df[df["Ganancia/perdida no realizada"] > 0].copy()
-    if positive.empty:
-        gains_column.info("No hay ganancias no realizadas positivas.")
-    else:
-        positive = positive.sort_values("Ganancia/perdida no realizada", ascending=False)
-        positive["Participacion en ganancias (%)"] = (
-            positive["Ganancia/perdida no realizada"]
-            / positive["Ganancia/perdida no realizada"].sum() * 100
-        )
-        gains_chart = (
-            alt.Chart(positive.assign(Orden=range(len(positive))))
+    colors = alt.Scale(domain=df["Accion"].tolist(), scheme="tableau10")
+    allocation_column, gains_column = st.columns(2)
+    allocation_column.subheader("Distribucion de las posiciones")
+    if total > 0 and (df["Asignacion (%)"] >= 0).all():
+        chart = (
+            alt.Chart(df.assign(Orden=range(len(df))))
             .mark_arc(stroke="white", strokeWidth=2)
             .encode(
-                theta=alt.Theta("Ganancia/perdida no realizada:Q", stack=True),
-                color=alt.Color("Accion:N", scale=colors),
+                theta=alt.Theta("Asignacion (%):Q", stack=True),
+                color=alt.Color("Accion:N", sort=df["Accion"].tolist(), scale=colors),
                 order=alt.Order("Orden:Q"),
-                tooltip=[
-                    "Accion:N",
-                    alt.Tooltip("Ganancia/perdida no realizada:Q", format=",.2f"),
-                    alt.Tooltip("Participacion en ganancias (%):Q", format=".2f"),
-                ],
+                tooltip=["Accion:N", alt.Tooltip("Valor actual:Q", format=",.2f"), alt.Tooltip("Asignacion (%):Q", format=".2f")],
             )
             .properties(height=360)
         )
-        gains_column.altair_chart(gains_chart, width="stretch")
+        allocation_column.altair_chart(chart, width="stretch")
+    else:
+        allocation_column.info("La distribucion grafica requiere un valor total positivo y asignaciones no negativas.")
 
-table = pd.concat([df, pd.DataFrame([{
-    "Accion": "TOTAL",
-    "Valor actual": total,
-    "Asignacion (%)": df["Asignacion (%)"].sum(),
-    **({"Ganancia/perdida no realizada": sum(gains.values())} if gains is not None else {}),
-}])], ignore_index=True)
-st.dataframe(
-    table,
-    hide_index=True,
-    width="stretch",
-    column_config={
-        "Valor actual": st.column_config.NumberColumn(format="%.2f"),
-        "Asignacion (%)": st.column_config.NumberColumn(format="%.2f%%"),
-        "Ganancia/perdida no realizada": st.column_config.NumberColumn(format="%.2f"),
-    },
-)
+    gains_column.subheader("Ganancias no realizadas positivas")
+    if gains is None:
+        gains_column.error("No se pudieron cargar las ganancias. Intenta actualizar de nuevo.")
+    else:
+        df["Ganancia/perdida no realizada"] = df["Accion"].map(gains)
+        positive = df[df["Ganancia/perdida no realizada"] > 0].copy()
+        if positive.empty:
+            gains_column.info("No hay ganancias no realizadas positivas.")
+        else:
+            positive = positive.sort_values("Ganancia/perdida no realizada", ascending=False)
+            positive["Participacion en ganancias (%)"] = (
+                positive["Ganancia/perdida no realizada"]
+                / positive["Ganancia/perdida no realizada"].sum() * 100
+            )
+            gains_chart = (
+                alt.Chart(positive.assign(Orden=range(len(positive))))
+                .mark_arc(stroke="white", strokeWidth=2)
+                .encode(
+                    theta=alt.Theta("Ganancia/perdida no realizada:Q", stack=True),
+                    color=alt.Color("Accion:N", scale=colors),
+                    order=alt.Order("Orden:Q"),
+                    tooltip=[
+                        "Accion:N",
+                        alt.Tooltip("Ganancia/perdida no realizada:Q", format=",.2f"),
+                        alt.Tooltip("Participacion en ganancias (%):Q", format=".2f"),
+                    ],
+                )
+                .properties(height=360)
+            )
+            gains_column.altair_chart(gains_chart, width="stretch")
+
+    table = pd.concat([df, pd.DataFrame([{
+        "Accion": "TOTAL",
+        "Valor actual": total,
+        "Asignacion (%)": df["Asignacion (%)"].sum(),
+        **({"Ganancia/perdida no realizada": sum(gains.values())} if gains is not None else {}),
+    }])], ignore_index=True)
+    st.dataframe(
+        table,
+        hide_index=True,
+        width="stretch",
+        column_config={
+            "Valor actual": st.column_config.NumberColumn(format="%.2f"),
+            "Asignacion (%)": st.column_config.NumberColumn(format="%.2f%%"),
+            "Ganancia/perdida no realizada": st.column_config.NumberColumn(format="%.2f"),
+        },
+    )
