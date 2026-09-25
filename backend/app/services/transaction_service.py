@@ -198,7 +198,67 @@ class TransactionService():
                 closed_transactions.append(ClosedTransaction(**sale))
 
         return closed_transactions
+    
+    
+    
+    async def delete_transaction(self, transaction_id: int, portfolio_id: int, user_id: int) -> None:
+        """Delete one transaction if the remaining history stays valid.
 
+        Deleting a SELL is always safe (it only increases the shares held).
+        Deleting a BUY can leave a later SELL without enough shares, so the
+        symbol's remaining transactions are replayed first.
+
+        Raises:
+            HTTPException: 404 if the transaction doesn't exist in that
+                portfolio of the user, 409 if deleting it would leave a SELL
+                selling more shares than were held.
+        """
+        # Ownership: the transaction must belong to this portfolio, and the
+        # portfolio to this user.
+        result = await self.db.execute(
+            select(models.Transaction)
+            .join(models.Portfolio, models.Transaction.portfolio_id == models.Portfolio.id)
+            .where(
+                models.Transaction.id == transaction_id,
+                models.Transaction.portfolio_id == portfolio_id,
+                models.Portfolio.user_id == user_id,
+            )
+        )
+        transaction = result.scalars().first()
+        if transaction is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Transaction not found",
+            )
+
+        if transaction.transaction_type == models.TransactionType.BUY:
+            remaining = await self.db.execute(
+                select(models.Transaction)
+                .where(
+                    models.Transaction.portfolio_id == portfolio_id,
+                    models.Transaction.symbol == transaction.symbol,
+                    models.Transaction.id != transaction.id,
+                )
+                .order_by(models.Transaction.transaction_date, models.Transaction.id)
+            )
+            position = Position()
+            try:
+                for item in remaining.scalars().all():
+                    apply_transaction(position, item)
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Deleting this BUY would leave a later SELL without enough shares",
+                ) from exc
+
+        await self.db.delete(transaction)
+        await self.db.commit()           
+                    
+      
+      
+      
+      
+                               
     async def _validate_sell(
         self,
         portfolio_id: int,

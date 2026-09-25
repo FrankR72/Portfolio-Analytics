@@ -74,6 +74,7 @@ async def get_transactions_endpoint(
     """
     return await service.get_transactions(portfolio_id, user.id)
 
+
 @router.get("/closed", response_model=list[ClosedTransaction])
 async def get_closed_transactions_endpoint(
     service: Annotated[TransactionService, Depends(get_transaction_service)],
@@ -89,3 +90,19 @@ async def get_closed_transactions_endpoint(
     transaction history is invalid.
     """
     return await service.get_closed_transactions(portfolio_id, user.id)
+
+
+@router.delete("/{transaction_id}", status_code=204)
+async def delete_transaction_endpoint(
+    service: Annotated[TransactionService, Depends(get_transaction_service)],
+    transaction_id: int,
+    portfolio_id: int,
+    user: Annotated[User, Depends(get_current_user)],
+):
+    """Delete a transaction. Returns 204.
+
+    Errors: 404 if it doesn't exist in one of your portfolios, 409 if it's a
+    BUY that a later SELL depends on.
+    """
+    await service.delete_transaction(transaction_id, portfolio_id, user.id)
+
