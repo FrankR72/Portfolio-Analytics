@@ -13,6 +13,7 @@ from session import auth_headers, end_session, get_token
 
 
 PORTFOLIOS_URL = "http://127.0.0.1:8000/api/portfolios"
+PERIODS = ["1W", "1M", "3M", "6M", "YTD", "1Y", "All"]
 
 
 def get_data(url, optional=False):
@@ -34,56 +35,72 @@ def get_data(url, optional=False):
         return None
 
 
+def fetch_cached(url, params):
+    """GET a JSON payload, cached for 5 minutes in `performance_cache`.
+
+    A 422 is raised as ValueError with the backend's detail, so callers can
+    show it as a warning.
+    """
+    cache = st.session_state.setdefault("performance_cache", {})
+    cache_key = ("dates_v2", get_token(), url, tuple(sorted(params.items())))
+    cached = cache.get(cache_key)
+    now = datetime.now().timestamp()
+    if cached and now - cached[0] < 300:
+        return cached[1]
+    response = requests.get(url, params=params, headers=auth_headers(), timeout=60)
+    if response.status_code == 401:
+        end_session()
+    if response.status_code == 422:
+        detail = response.json().get("detail")
+        raise ValueError(detail if isinstance(detail, str) else "Periodo no disponible.")
+    response.raise_for_status()
+    data = response.json()
+    cache[cache_key] = (now, data)
+    return data
+
+
+def period_start_date(portfolio_id, period, end_date):
+    """Return the first day of a period ending at end_date.
+
+    "All" starts at the portfolio's first transaction, so it returns None
+    when the portfolio has no transactions.
+    """
+    if period == "All":
+        transactions = fetch_cached(
+            "http://127.0.0.1:8000/api/transactions",
+            {"portfolio_id": portfolio_id},
+        )
+        if not transactions:
+            return None
+        return min(date.fromisoformat(t["transaction_date"][:10]) for t in transactions)
+    if period == "YTD":
+        return date(end_date.year, 1, 1) - timedelta(days=1)
+    if period == "1W":
+        return end_date - timedelta(days=7)
+    months = {"1M": 1, "3M": 3, "6M": 6, "1Y": 12}[period]
+    return (pd.Timestamp(end_date) - pd.DateOffset(months=months)).date()
+
+
 @st.fragment
 def show_portfolio_history(portfolio_id):
     st.subheader("Rendimiento del portafolio")
     period = st.segmented_control(
-        "Periodo", ["1W", "1M", "3M", "6M", "YTD", "1Y", "All"],
+        "Periodo", PERIODS,
         default="3M", required=True, key=f"return_period_{portfolio_id}",
         label_visibility="collapsed",
     )
     end_date = date.today()
-    cache = st.session_state.setdefault("performance_cache", {})
-
-    def fetch(url, params):
-        cache_key = ("dates_v2", get_token(), url, tuple(sorted(params.items())))
-        cached = cache.get(cache_key)
-        now = datetime.now().timestamp()
-        if cached and now - cached[0] < 300:
-            return cached[1]
-        response = requests.get(url, params=params, headers=auth_headers(), timeout=60)
-        if response.status_code == 401:
-            end_session()
-        if response.status_code == 422:
-            detail = response.json().get("detail")
-            raise ValueError(detail if isinstance(detail, str) else "Periodo no disponible.")
-        response.raise_for_status()
-        data = response.json()
-        cache[cache_key] = (now, data)
-        return data
 
     try:
         with st.spinner("Cargando rendimiento..."):
-            if period == "All":
-                transactions = fetch(
-                    "http://127.0.0.1:8000/api/transactions",
-                    {"portfolio_id": portfolio_id},
-                )
-                if not transactions:
-                    st.info("No hay transacciones en este portafolio.")
-                    return
-                start_date = min(date.fromisoformat(t["transaction_date"][:10]) for t in transactions)
-            elif period == "YTD":
-                start_date = date(date.today().year, 1, 1) - timedelta(days=1)
-            elif period == "1W":
-                start_date = end_date - timedelta(days=7)
-            else:
-                months = {"1M": 1, "3M": 3, "6M": 6, "1Y": 12}[period]
-                start_date = (pd.Timestamp(end_date) - pd.DateOffset(months=months)).date()
+            start_date = period_start_date(portfolio_id, period, end_date)
+            if start_date is None:
+                st.info("No hay transacciones en este portafolio.")
+                return
             if start_date > end_date:
                 st.info("Todavia no hay suficientes datos para este periodo.")
                 return
-            payload = fetch(
+            payload = fetch_cached(
                 f"{PORTFOLIOS_URL}/{portfolio_id}/performance",
                 {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
             )
@@ -162,6 +179,114 @@ def show_portfolio_history(portfolio_id):
         period_column.metric(period_label, f"{last['return_percentage']:+.2f}%")
 
 
+@st.fragment
+def show_stocks_history(portfolio_id):
+    """Line chart with the cumulative return of each stock, one line per symbol.
+
+    Same method and period selector as show_portfolio_history, computed per
+    stock by /stocks_performance. Clicking a symbol in the legend highlights
+    its line.
+    """
+    st.subheader("Rendimiento por accion")
+    period = st.segmented_control(
+        "Periodo", PERIODS,
+        default="3M", required=True, key=f"stocks_return_period_{portfolio_id}",
+        label_visibility="collapsed",
+    )
+    end_date = date.today()
+
+    try:
+        with st.spinner("Cargando rendimiento por accion..."):
+            start_date = period_start_date(portfolio_id, period, end_date)
+            if start_date is None:
+                st.info("No hay transacciones en este portafolio.")
+                return
+            if start_date > end_date:
+                st.info("Todavia no hay suficientes datos para este periodo.")
+                return
+            payload = fetch_cached(
+                f"{PORTFOLIOS_URL}/{portfolio_id}/stocks_performance",
+                {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
+            )
+        errors = payload.get("errors", {})
+        frames = []
+        for symbol, series in payload["stocks"].items():
+            points = series["points"]
+            if not isinstance(points, list):
+                raise ValueError("Historial invalido.")
+            if points:
+                frame = pd.DataFrame(points)[["date", "return_percentage"]]
+                frame["symbol"] = symbol
+                frames.append(frame)
+        if not frames:
+            st.info("No hay historial por accion disponible para este periodo.")
+            if errors:
+                st.caption("Sin rendimiento: " + "; ".join(f"{s}: {m}" for s, m in errors.items()))
+            return
+        history = pd.concat(frames, ignore_index=True)
+        history["date"] = pd.to_datetime(history["date"], errors="raise")
+        history["return_percentage"] = pd.to_numeric(history["return_percentage"], errors="raise")
+        if (
+            history["date"].isna().any()
+            or history.duplicated(["symbol", "date"]).any()
+            or not history["return_percentage"].map(math.isfinite).all()
+        ):
+            raise ValueError("Historial invalido.")
+        history = history.sort_values(["symbol", "date"])
+    except requests.RequestException:
+        st.error("No se pudo cargar el rendimiento por accion. Intenta actualizar de nuevo.")
+        return
+    except (ValueError, KeyError, TypeError, AttributeError) as exc:
+        st.warning(str(exc) if isinstance(exc, ValueError) else "El servidor devolvio un historial incompleto.")
+        return
+
+    history["day"] = history["date"].dt.strftime("%Y-%m-%d")
+    history["return_ratio"] = history["return_percentage"] / 100
+    st.caption(
+        f"{history['day'].min()} - {history['day'].max()} | "
+        "Cada accion empieza en su primera compra si es posterior al inicio del periodo. "
+        "Haz clic en la leyenda para resaltar una accion."
+    )
+    if any(series.get("provisional") for series in payload["stocks"].values()):
+        st.caption("Hoy: valor provisional con los ultimos precios disponibles.")
+    if errors:
+        st.caption("Sin rendimiento: " + "; ".join(f"{s}: {m}" for s, m in errors.items()))
+
+    highlight = alt.selection_point(fields=["symbol"], bind="legend")
+    lines = alt.Chart(history).mark_line(
+        strokeWidth=2,
+        # A series with a single day has no line to draw, so show its point.
+        point=bool(history.groupby("symbol").size().min() == 1),
+    ).encode(
+        x=alt.X("date:T", title=None),
+        y=alt.Y("return_ratio:Q", title="Rendimiento", axis=alt.Axis(format=".1%")),
+        color=alt.Color("symbol:N", title="Accion", scale=alt.Scale(scheme="tableau10")),
+        opacity=alt.condition(highlight, alt.value(1), alt.value(0.15)),
+        tooltip=[
+            alt.Tooltip("symbol:N", title="Accion"),
+            alt.Tooltip("day:N", title="Fecha"),
+            alt.Tooltip("return_ratio:Q", title="Rendimiento", format="+.2%"),
+        ],
+    ).add_params(highlight)
+    zero = alt.Chart(pd.DataFrame({"zero": [0]})).mark_rule(
+        color="#999999", strokeDash=[4, 4],
+    ).encode(y="zero:Q")
+    st.altair_chart(
+        (zero + lines).properties(height=340), width="stretch",
+        key=f"stocks_return_chart_{portfolio_id}_{period}_{start_date}_{end_date}",
+    )
+
+    latest = history.groupby("symbol").agg(
+        desde=("day", "first"), rendimiento=("return_percentage", "last"),
+    ).reset_index().sort_values("rendimiento", ascending=False)
+    st.dataframe(
+        latest.rename(columns={"symbol": "Accion", "desde": "Desde", "rendimiento": "Rendimiento (%)"}),
+        hide_index=True,
+        width="stretch",
+        column_config={"Rendimiento (%)": st.column_config.NumberColumn(format="%+.2f%%")},
+    )
+
+
 def render_analytics(portfolio):
     portfolio_id = portfolio["id"]
 
@@ -197,6 +322,7 @@ def render_analytics(portfolio):
     st.caption(f"Datos consultados: {datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S %Z')}")
 
     show_portfolio_history(portfolio_id)
+    show_stocks_history(portfolio_id)
 
     if not rows:
         st.info("Este portafolio todavia no tiene posiciones abiertas.")

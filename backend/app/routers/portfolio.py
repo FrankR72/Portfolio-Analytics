@@ -176,3 +176,34 @@ async def get_portfolio_performance_endpoint(
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    
+    
+    
+@router.get("/{portfolio_id}/stocks_performance")
+async def get_stock_performances_endpoint(
+    portfolio_id: int,
+    start_date: date,
+    end_date: date,
+    service: Annotated[AnalyticService, Depends(get_analytic_service)],
+    user: Annotated[User, Depends(get_current_user)],
+):
+    """Daily cumulative return of each stock in a portfolio between two dates.
+
+    Same query parameters and per-stock format as `/performance`. Returns
+    `{method, requested_start_date, end_date, stocks: {SYMBOL: {...}},
+    errors: {SYMBOL: message}}`. A stock whose return can't be computed
+    appears in `errors` instead of failing the whole request.
+
+    Errors: 404 if the portfolio doesn't exist or isn't yours, 422 if the
+    dates are invalid.
+    """
+    # AnalyticService raises ValueError instead of HTTPException.
+    try:
+        return await service.get_stock_performances(
+            user_id=user.id,
+            portfolio_id=portfolio_id,
+            start_date=start_date,
+            end_date=end_date,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
