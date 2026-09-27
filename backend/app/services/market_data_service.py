@@ -98,10 +98,10 @@ def get_historical_stock_prices(symbol, start_date, end_date):
         prices = history["Close"].copy()
         prices.index = pd.to_datetime(history.index.date)
         return prices
-    except Exception as exec:
+    except Exception as exc:
         raise ValueError(
             f"Could not verify a usable price for {symbol}"
-        ) from exec
+        ) from exc
 
 
 
