@@ -57,7 +57,7 @@ def get_current_stock_price(symbol: str) -> float:
         ) from exc
     
     
-    
+ 
 def get_historical_stock_prices(symbol, start_date, end_date):
     """Return daily closing prices for a ticker.
 
@@ -79,22 +79,31 @@ def get_historical_stock_prices(symbol, start_date, end_date):
             window, because user-entered prices are not split-adjusted and
             the returns would be wrong.
     """
-    history = yf.Ticker(symbol).history(
-        start=start_date,
-        end=end_date,  # Exclusive upper bound
-        auto_adjust=False,
-        actions=True,
-    )
+    symbol = symbol.strip().upper()
+    
+    try:
+        if not symbol:
+            raise ValueError("Empty ticker")
+    
+        history = yf.Ticker(symbol).history(
+            start=start_date,
+            end=end_date,  # Exclusive upper bound
+            auto_adjust=False,
+            actions=True,
+        )
 
-    if history.empty:
-        raise ValueError(f"No historical prices available for {symbol}")
+        if history.empty:
+            raise ValueError(f"No historical prices available for {symbol}")
 
-    if (history["Stock Splits"].fillna(0) != 0).any():
-        raise ValueError(f"Split handling is required for {symbol}")
+        prices = history["Close"].copy()
+        prices.index = pd.to_datetime(history.index.date)
+        return prices
+    except Exception as exec:
+        raise ValueError(
+            f"Could not verify a usable price for {symbol}"
+        ) from exec
 
-    prices = history["Close"].copy()
-    prices.index = pd.to_datetime(history.index.date)
-    return prices
+
 
 def ticker_validation(symbol: str) -> bool:
     """Return True if a usable current price can be fetched for the ticker.
