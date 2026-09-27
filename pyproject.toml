@@ -19,8 +19,12 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
     "pytest-mock>=3.15.1",
 ]
 [tool.pytest.ini_options]
-pythonpath = ["backend"]
+# Tests import app modules the same way the app does (`import models`,
+# `from services.x import ...`), so backend/app/ is the import root.
+pythonpath = ["backend/app"]
 testpaths = ["backend/tests"]
+asyncio_mode = "auto"

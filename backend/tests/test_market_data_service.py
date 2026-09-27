@@ -2,7 +2,7 @@ import pytest
 
 import pandas as pd
 
-from app.services.market_data_service import (
+from services.market_data_service import (
     get_current_stock_price,
     get_historical_stock_prices,
     ticker_validation,
@@ -13,7 +13,7 @@ from app.services.market_data_service import (
 
 @pytest.fixture
 def history(mocker):
-    fake_stock = mocker.patch("app.services.market_data_service.yf.Ticker").return_value
+    fake_stock = mocker.patch("services.market_data_service.yf.Ticker").return_value
     fake_history = fake_stock.history
     return fake_history
 
