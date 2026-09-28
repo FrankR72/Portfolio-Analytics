@@ -1,3 +1,16 @@
+"""Tests for services/analytic_service.py.
+
+No database and no network: the transactions and both kinds of prices are
+mocked, and fake transactions are plain objects built with `tx()`. The
+holdings replay (HoldingService.build_holdings_dictionary) is the real one,
+so the distribution tests also check the average-cost accounting.
+
+Expected numbers are calculated by hand and written in comments next to the
+test. Most of the tests are for _build_performance_series, where the return
+math lives; the public performance methods only get the checks they add on
+top (date validation, grouping per stock).
+"""
+
 from datetime import date, datetime, timedelta
 from types import SimpleNamespace
 
@@ -35,10 +48,12 @@ def closes(prices_by_day):
 
 
 def returns(result):
+    """Cumulative return (%) of each day in a performance result."""
     return [point["return_percentage"] for point in result["points"]]
 
 
 def values(result):
+    """Market value of the holdings on each day in a performance result."""
     return [point["holdings_value"] for point in result["points"]]
 
 
@@ -48,21 +63,32 @@ MON, TUE, WED = date(2026, 1, 5), date(2026, 1, 6), date(2026, 1, 7)
 
 @pytest.fixture
 def service():
+    """No session needed: the only database call is mocked by `transactions`."""
     return AnalyticService(session=None)
 
 
 @pytest.fixture
 def transactions(service, mocker):
+    """Replaces the database query. Set return_value to the list of fake
+    transactions (already sorted by date, like the real query), or
+    side_effect to an HTTPException."""
     return mocker.patch.object(service.holding_service, "get_portfolio_transactions")
 
 
+# The price functions are patched in analytic_service, not in
+# market_data_service, because analytic_service imported them by name.
+
 @pytest.fixture
 def current_price(mocker):
+    """Fake current price: return_value for one price, side_effect with a
+    function for a different price per symbol."""
     return mocker.patch("services.analytic_service.get_current_stock_price")
 
 
 @pytest.fixture
 def historical_prices(mocker):
+    """Fake price history: a `closes(...)` Series, or a function of
+    (symbol, start, end) when there are several symbols."""
     return mocker.patch("services.analytic_service.get_historical_stock_prices")
 
 

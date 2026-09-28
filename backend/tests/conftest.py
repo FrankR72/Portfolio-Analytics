@@ -1,3 +1,9 @@
+"""Shared pytest setup for the backend tests.
+
+pytest loads this file before any test module, so the environment set here
+is in place before the app modules are imported.
+"""
+
 import os
 
 # config.py builds Settings() on import and needs SECRET_KEY. It reads

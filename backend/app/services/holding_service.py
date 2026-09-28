@@ -66,6 +66,7 @@ class HoldingService:
         list_of_transactions = result.scalars().all()
         return list_of_transactions
 
+
     def build_holdings_dictionary(self, transactions: list[models.Transaction]):
         """Replay transactions into one entry per symbol ever traded.
 
