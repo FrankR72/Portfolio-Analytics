@@ -21,9 +21,6 @@ from datetime import date, timedelta
 
 import math
 
-from database import get_db
-
-from sqlalchemy import select, func
 
 from .market_data_service import get_current_stock_price, get_historical_stock_prices
 
@@ -37,6 +34,7 @@ class AnalyticService:
     def __init__(self, session):
         self.db = session
         self.holding_service = HoldingService(session)
+        
 
     async def get_portfolio_distribution(self, user_id: int, portfolio_id: int):
         """Return the market value of each open position and its weight.
@@ -117,7 +115,6 @@ class AnalyticService:
             }
         return holdings_unrealized_gains_distribution
             
-        
         
     async def get_portfolio_performance(
             self, user_id: int, portfolio_id: int,

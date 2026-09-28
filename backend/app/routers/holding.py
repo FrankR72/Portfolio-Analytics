@@ -14,11 +14,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.holding_service import HoldingService
 
-from database import get_db
+from db.database import get_db
 
-from schemas import HoldingBase
+from db.schemas import HoldingBase
 
-from models import User
+from models.models import User
 
 from routers.auth import get_current_user
 

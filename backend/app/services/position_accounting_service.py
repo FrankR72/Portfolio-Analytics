@@ -16,7 +16,7 @@ Known issues (pending refactor):
 
 from dataclasses import dataclass
 
-from models import Transaction
+from models.models import Transaction
 
 @dataclass
 class Position:

@@ -11,8 +11,8 @@ from typing import Annotated
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database import get_db
-from schemas import UserPrivate, UserCreate
+from db.database import get_db
+from db.schemas import UserPrivate, UserCreate
 
 from services.user_service import UserService
 

@@ -16,13 +16,13 @@ import asyncio
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import models
+from models import models
 
 from sqlalchemy import select, func
 
 from services.market_data_service import get_current_stock_price
 
-from schemas import HoldingBase
+from db.schemas import HoldingBase
 
 from .position_accounting_service import Position, apply_transaction
 

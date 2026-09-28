@@ -2,7 +2,7 @@ from fastapi.security import OAuth2PasswordBearer
 
 from datetime import timedelta, datetime, UTC
 
-from config import settings
+from core.config import settings
 
 from pwdlib import PasswordHash
 

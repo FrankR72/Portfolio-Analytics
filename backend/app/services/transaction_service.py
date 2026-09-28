@@ -15,9 +15,9 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import UTC, datetime, time
 
-from schemas import ClosedTransaction, TransactionCreate
+from db.schemas import ClosedTransaction, TransactionCreate
 
-import models
+from models import models
 
 import asyncio
 from .market_data_service import ticker_validation

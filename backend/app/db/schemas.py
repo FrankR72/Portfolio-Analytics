@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from datetime import date, datetime
-from models import TransactionType
+from models.models import TransactionType
 
 
 # User schema

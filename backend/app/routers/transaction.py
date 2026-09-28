@@ -16,13 +16,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from services.transaction_service import TransactionService
 from typing import Annotated
 
-from database import get_db
+from db.database import get_db
 
 from routers.auth import get_current_user
 
-from models import User
+from models.models import User
 
-from schemas import ClosedTransaction, TransactionCreate, TransactionPrivate
+from db.schemas import ClosedTransaction, TransactionCreate, TransactionPrivate
 
 
 

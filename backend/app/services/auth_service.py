@@ -10,13 +10,13 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from sqlalchemy import select, func
 
-from schemas import Token
+from db.schemas import Token
 
-import models
+from models import models
 
 from datetime import timedelta
 
-from config import settings
+from core.config import settings
 
 from security import (
     verify_password,

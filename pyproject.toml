@@ -23,7 +23,7 @@ dev = [
     "pytest-mock>=3.15.1",
 ]
 [tool.pytest.ini_options]
-# Tests import app modules the same way the app does (`import models`,
+# Tests import app modules the same way the app does (`from models import models`,
 # `from services.x import ...`), so backend/app/ is the import root.
 pythonpath = ["backend/app"]
 testpaths = ["backend/tests"]

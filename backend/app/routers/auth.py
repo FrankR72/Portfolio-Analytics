@@ -11,9 +11,9 @@ from typing import Annotated
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database import get_db
-from models import User
-from schemas import Token, UserPrivate
+from db.database import get_db
+from models.models import User
+from db.schemas import Token, UserPrivate
 
 from services.auth_service import AuthService
 

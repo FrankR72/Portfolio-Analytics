@@ -12,9 +12,9 @@ from fastapi import HTTPException, status
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from schemas import UserCreate
+from db.schemas import UserCreate
 
-import models
+from models import models
 
 from security import hash_password
 

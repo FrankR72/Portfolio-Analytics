@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from enum import Enum
 
 
-from database import Base
+from db.database import Base
 
 
 

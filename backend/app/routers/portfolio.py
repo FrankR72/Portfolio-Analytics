@@ -16,9 +16,9 @@ from typing import Annotated
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database import get_db
-from models import User
-from schemas import PortfolioPrivate, PortfolioCreate, PortfolioUpdate
+from db.database import get_db
+from models.models import User
+from db.schemas import PortfolioPrivate, PortfolioCreate, PortfolioUpdate
 
 from services.portfolio_service import PortfolioService
 from routers.auth import get_current_user

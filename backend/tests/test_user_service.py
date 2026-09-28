@@ -4,8 +4,8 @@ from fastapi import HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
-import models
-from schemas import UserCreate
+from models import models
+from db.schemas import UserCreate
 from services.user_service import UserService
 
 

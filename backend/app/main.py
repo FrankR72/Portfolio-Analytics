@@ -2,7 +2,7 @@ from fastapi import FastAPI
 
 from contextlib import asynccontextmanager
 
-from database import Base, engine
+from db.database import Base, engine
 
 from routers import user, auth, portfolio, transaction, holding
 

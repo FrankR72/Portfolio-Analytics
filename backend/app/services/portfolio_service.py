@@ -14,9 +14,9 @@ from fastapi import HTTPException, status
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from schemas import PortfolioCreate
+from db.schemas import PortfolioCreate
 
-import models
+from models import models
 
 
 class PortfolioService():
