@@ -16,8 +16,10 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
 def hash_password(password: str) -> str:
     return password_hash.hash(password)
 
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return password_hash.verify(plain_password, hashed_password)
+
 
 def create_access_token(data: dict, expires_delta: timedelta) -> str:
     """Generate JWT aaccess token"""
@@ -35,6 +37,7 @@ def create_access_token(data: dict, expires_delta: timedelta) -> str:
         algorithm=settings.algorithm
     )
     return encoded_jwt
+
 
 def verify_access_token(token: str) -> str | None:
     """Verify access token and respond with (user id) when valid"""
