@@ -137,6 +137,7 @@ class TransactionService():
 
         return ordered_transaction_list
 
+
     async def get_closed_transactions(self, portfolio_id: int, user_id: int):
         """Return the realized gain or loss of every SELL in a portfolio.
 
@@ -198,9 +199,8 @@ class TransactionService():
                 closed_transactions.append(ClosedTransaction(**sale))
 
         return closed_transactions
-    
-    
-    
+
+
     async def delete_transaction(self, transaction_id: int, portfolio_id: int, user_id: int) -> None:
         """Delete one transaction if the remaining history stays valid.
 
@@ -253,12 +253,8 @@ class TransactionService():
 
         await self.db.delete(transaction)
         await self.db.commit()           
-                    
-      
-      
-      
-      
-                               
+           
+            
     async def _validate_sell(
         self,
         portfolio_id: int,

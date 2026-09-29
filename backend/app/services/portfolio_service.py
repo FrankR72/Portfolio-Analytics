@@ -67,7 +67,8 @@ class PortfolioService():
         portfolios_list = result.scalars().all()
         
         return portfolios_list
-    
+
+
     async def delete_portfolio(self, portfolio_id: int, user_id: int):
         """Delete a portfolio together with all of its transactions (cascade).
 
@@ -90,8 +91,8 @@ class PortfolioService():
         
         await self.db.delete(existing_portfolio)
         await self.db.commit()
-        
-        
+
+
     async def update_portfolio(self, portfolio_id: int, user_id: int, new_name: str):
         """Rename a portfolio.
 
@@ -132,7 +133,8 @@ class PortfolioService():
         await self.db.commit()
         await self.db.refresh(portfolio)
         return portfolio    
-    
+
+
     async def visualize_portfolio(self, portfolio_id: int, user_id: int):
         """Return one portfolio by id (it doesn't build any view or chart).
 

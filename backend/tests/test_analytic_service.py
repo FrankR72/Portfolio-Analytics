@@ -600,6 +600,3 @@ async def test_stock_performances_empty_portfolio(service, transactions, histori
 
     assert result["stocks"] == {}
     assert result["errors"] == {}
-    
-    
-    
