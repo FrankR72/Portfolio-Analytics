@@ -49,7 +49,7 @@ def service(session):
 
 @pytest.fixture
 async def user(session):
-    """A registered user. The email is stored lowercased, like
+    """A registered user. The email is stored lowercas  ed, like
     UserService.create_user does."""
     user = models.User(
         username="Geralt",
@@ -116,7 +116,7 @@ async def test_login_email_is_case_insensitive(service, user):
     ],
     ids=["wrong-password", "unknown-email", "username-instead-of-email"],
 )
-async def test_login_with_bad_credentials_is_rejected(service, user, form):
+async def test_login_with_bad_credentials_is_rejected(service, form):
     with pytest.raises(HTTPException) as error:
         await service.login_to_create_access_token(form)
 
