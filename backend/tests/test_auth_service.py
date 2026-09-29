@@ -153,7 +153,7 @@ async def test_login_token_resolves_to_user(service, user):
     ],
     ids=["garbage", "expired", "wrong-key", "no-sub", "no-exp"],
 )
-async def test_invalid_token_is_rejected(service, user, token):
+async def test_invalid_token_is_rejected(service, token):
     with pytest.raises(HTTPException) as error:
         await service.get_current_user(token)
 
@@ -161,7 +161,7 @@ async def test_invalid_token_is_rejected(service, user, token):
 
 
 # A correctly signed token whose "sub" isn't an integer id.
-async def test_token_with_non_integer_sub_is_rejected(service, user):
+async def test_token_with_non_integer_sub_is_rejected(service):
     token = create_access_token({"sub": "geralt"}, expires_delta=timedelta(minutes=5))
 
     with pytest.raises(HTTPException) as error:
