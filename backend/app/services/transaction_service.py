@@ -69,7 +69,7 @@ class TransactionService():
         recognized = await asyncio.to_thread(ticker_validation, symbol)
         if not recognized:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=(
                     "Ticker not recognized. Verify the ticker exists "
                     "or try again later."
