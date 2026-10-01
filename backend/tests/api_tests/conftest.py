@@ -14,18 +14,43 @@ How it works:
     - ASGITransport doesn't run the app's lifespan, so the startup
       create_all on test.db never runs; the `session` fixture creates the
       tables itself.
+    - yfinance is blocked in every test (block_yfinance). Tests that need
+      prices patch them explicitly.
+    - An exception the app doesn't handle is re-raised in the test instead
+      of becoming a 500 response, so a bug shows its full traceback.
 
 Unlike the service tests, these fixtures are shared by every file in this
 folder, because every API test needs the same client and users.
 """
 
+from datetime import UTC, datetime
+from types import SimpleNamespace
+
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from db.database import get_db
 from main import app
 from models import models
+
+
+# ---------------------------------------------------------------------------
+# No network
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(autouse=True)
+def block_yfinance(mocker):
+    """Make every real yfinance call fail, in every API test.
+
+    market_data_service turns the error into a ValueError, as if Yahoo
+    Finance were unreachable. Tests that need prices patch the price
+    functions where the services import them, for example
+    services.holding_service.get_current_stock_price.
+    """
+    fake_yf = mocker.patch("services.market_data_service.yf")
+    fake_yf.Ticker.side_effect = RuntimeError("yfinance must not be called in tests")
 
 
 # ---------------------------------------------------------------------------
@@ -104,3 +129,77 @@ def login(client):
         return {"Authorization": f"Bearer {response.json()['access_token']}"}
 
     return _login
+
+
+@pytest.fixture
+async def owner(create_user, login):
+    """Signed-up and logged-in user who owns the test data.
+
+    `owner.id` is the user id and `owner.headers` the Authorization header.
+    """
+    user = await create_user(username="Geralt", email="geralt@example.com")
+    headers = await login(email="geralt@example.com")
+    return SimpleNamespace(id=user["id"], headers=headers)
+
+
+@pytest.fixture
+async def stranger(create_user, login):
+    """A second logged-in user, who must not see the owner's data."""
+    user = await create_user(username="Ciri", email="ciri@example.com")
+    headers = await login(email="ciri@example.com")
+    return SimpleNamespace(id=user["id"], headers=headers)
+
+
+# ---------------------------------------------------------------------------
+# Portfolios and transactions
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+async def portfolio(client, owner) -> dict:
+    """The owner's portfolio "Main", created through POST /api/portfolios."""
+    response = await client.post("/api/portfolios", json={"name": "Main"}, headers=owner.headers)
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+@pytest.fixture
+def add_tx(session):
+    """Return an async function that inserts a transaction directly.
+
+    It skips the API and the service's checks (ticker lookup, oversell), so
+    a test can set up any history, including invalid ones. The date is
+    midnight UTC, like register_transaction stores it, and ids follow the
+    insertion order.
+    """
+
+    async def _add_tx(portfolio: dict, symbol: str, side: str, qty: int, price: float, day: str) -> int:
+        transaction = models.Transaction(
+            symbol=symbol,
+            transaction_type=models.TransactionType(side),
+            quantity_actions=qty,
+            price=price,
+            total_value=qty * price,
+            transaction_date=datetime.fromisoformat(day).replace(tzinfo=UTC),
+            portfolio_id=portfolio["id"],
+        )
+        session.add(transaction)
+        await session.commit()
+        return transaction.id
+
+    return _add_tx
+
+
+@pytest.fixture
+def count_transactions(session):
+    """Return an async function giving the number of transactions stored
+    for a portfolio. Used to check that a rejected request inserted or
+    deleted nothing."""
+
+    async def _count_transactions(portfolio: dict) -> int:
+        return await session.scalar(
+            select(func.count())
+            .select_from(models.Transaction)
+            .where(models.Transaction.portfolio_id == portfolio["id"])
+        )
+
+    return _count_transactions
