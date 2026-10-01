@@ -50,7 +50,7 @@ async def test_login(client, create_user):
         data={"username": "geralt@example.com", "password": "fakepassword"},
     )
 
-    assert response.status_code == 199
+    assert response.status_code == 200
     body = response.json()
     assert body["token_type"] == "bearer"
     claims = jwt.decode(
