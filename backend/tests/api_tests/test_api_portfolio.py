@@ -70,15 +70,37 @@ async def test_list_portfolios_only_yours(client, owner, stranger):
 # POST /api/portfolios
 # ---------------------------------------------------------------------------
 
-# 201 with exactly id, name and user_id; the owner is taken from the token.
+# 201 with exactly id, name, description and user_id; the owner is taken
+# from the token. No description sent: null.
 async def test_create_portfolio(client, owner):
     response = await client.post("/api/portfolios", json={"name": "Main"}, headers=owner.headers)
 
     assert response.status_code == 201
     body = response.json()
-    assert set(body) == {"id", "name", "user_id"}
+    assert set(body) == {"id", "name", "description", "user_id"}
     assert body["name"] == "Main"
+    assert body["description"] is None
     assert body["user_id"] == owner.id
+
+
+# The description is stored with surrounding spaces stripped.
+async def test_create_portfolio_with_description(client, owner):
+    response = await client.post(
+        "/api/portfolios", json={"name": "Main", "description": "  Long term  "}, headers=owner.headers
+    )
+
+    assert response.status_code == 201
+    assert response.json()["description"] == "Long term"
+
+
+# A blank description is stored as null, so "no description" has one form.
+async def test_create_portfolio_blank_description_is_null(client, owner):
+    response = await client.post(
+        "/api/portfolios", json={"name": "Main", "description": "   "}, headers=owner.headers
+    )
+
+    assert response.status_code == 201
+    assert response.json()["description"] is None
 
 
 # Same name in a different case: 406 (see the module docstring).
@@ -96,8 +118,12 @@ async def test_create_same_name_as_another_user(client, stranger, portfolio):
     assert response.status_code == 201
 
 
-# An empty name, or none at all: 422.
-@pytest.mark.parametrize("body", [{"name": ""}, {}], ids=["empty name", "no name"])
+# An empty name, none at all, or a description over 255 characters: 422.
+@pytest.mark.parametrize(
+    "body",
+    [{"name": ""}, {}, {"name": "Main", "description": "x" * 256}],
+    ids=["empty name", "no name", "description over 255"],
+)
 async def test_create_invalid_body_returns_422(client, owner, body):
     response = await client.post("/api/portfolios", json=body, headers=owner.headers)
 
@@ -144,6 +170,20 @@ async def test_rename_portfolio(client, owner, portfolio):
 
     assert response.status_code == 200
     assert response.json() == {**portfolio, "name": "Long term"}
+
+
+# PUT replaces the description too: sending one sets it, leaving it out
+# clears it.
+async def test_update_portfolio_description(client, owner, portfolio):
+    url = f"/api/portfolios/{portfolio['id']}"
+
+    response = await client.put(url, json={"name": "Main", "description": "Dividends"}, headers=owner.headers)
+    assert response.status_code == 200
+    assert response.json()["description"] == "Dividends"
+
+    response = await client.put(url, json={"name": "Main"}, headers=owner.headers)
+    assert response.status_code == 200
+    assert response.json()["description"] is None
 
 
 # Changing only the case of its own name is allowed: the duplicate check

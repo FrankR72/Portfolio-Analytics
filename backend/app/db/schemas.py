@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from pydantic import BaseModel, Field, ConfigDict, EmailStr, field_validator
 from datetime import date, datetime
 from models.models import TransactionType
 
@@ -33,9 +33,20 @@ class Token(BaseModel):
 
 
 # Portfolio schema
+def blank_to_none(value: str | None) -> str | None:
+    """Strip a description and store an empty one as None, so "no
+    description" has a single representation."""
+    if value is None:
+        return None
+    return value.strip() or None
+
+
 class PortfolioBase(BaseModel):
     name: str = Field(min_length=1, max_length=100)
-    
+    description: str | None = Field(default=None, max_length=255)
+
+    _normalize_description = field_validator("description")(blank_to_none)
+
 class PortfolioCreate(PortfolioBase):
     pass
 
@@ -52,6 +63,10 @@ class PortfolioUpdate(BaseModel):
     )
 
     name: str = Field(min_length=1, max_length=100)
+    # PUT replaces both fields: leaving description out clears it.
+    description: str | None = Field(default=None, max_length=255)
+
+    _normalize_description = field_validator("description")(blank_to_none)
 
 
 # Transaction schema

@@ -12,10 +12,13 @@ from session import auth_headers, end_session
 PORTFOLIOS_URL = "http://127.0.0.1:8000/api/portfolios"
 
 
-@st.dialog("Cambiar nombre del portafolio")
-def rename_portfolio(portfolio):
-    with st.form(f"rename_portfolio_{portfolio['id']}"):
+@st.dialog("Editar portafolio")
+def edit_portfolio(portfolio):
+    with st.form(f"edit_portfolio_{portfolio['id']}"):
         name = st.text_input("Nombre", value=portfolio["name"], max_chars=100)
+        description = st.text_area(
+            "Descripcion (opcional)", value=portfolio.get("description") or "", max_chars=255
+        )
         cancel_column, save_column = st.columns(2)
         cancel = cancel_column.form_submit_button("Cancelar", width="stretch")
         save = save_column.form_submit_button("Guardar", type="primary", icon=":material/save:", width="stretch")
@@ -27,32 +30,35 @@ def rename_portfolio(portfolio):
     if not name:
         st.error("El nombre no puede estar vacio.")
         return
-    if name == portfolio["name"]:
+    # The backend stores a blank description as None.
+    description = description.strip() or None
+    if name == portfolio["name"] and description == portfolio.get("description"):
         st.rerun()
     try:
-        with st.spinner("Guardando nombre..."):
+        with st.spinner("Guardando cambios..."):
+            # PUT replaces both fields, so the description is always sent.
             updated = requests.put(
                 f"{PORTFOLIOS_URL}/{portfolio['id']}",
                 headers=auth_headers(),
-                json={"name": name}, timeout=15,
+                json={"name": name, "description": description}, timeout=15,
             )
     except requests.RequestException:
-        st.error("No se pudo confirmar el cambio. Revisa el nombre del portafolio antes de intentarlo de nuevo.")
+        st.error("No se pudo confirmar el cambio. Revisa el portafolio antes de intentarlo de nuevo.")
         return
     if updated.status_code == 200:
         st.session_state["selected_portfolio_id"] = portfolio["id"]
-        st.session_state["portfolio_rename_notice"] = "Nombre del portafolio actualizado."
+        st.session_state["portfolio_rename_notice"] = "Portafolio actualizado."
         st.rerun()
     elif updated.status_code == 401:
         end_session()
     elif updated.status_code == 409:
         st.error("Ya tienes un portafolio con ese nombre.")
     elif updated.status_code == 422:
-        st.error("Introduce un nombre valido de 1 a 100 caracteres.")
+        st.error("Introduce un nombre de 1 a 100 caracteres y una descripcion de hasta 255.")
     elif updated.status_code == 404:
         st.error("El portafolio ya no esta disponible. Cierra este dialogo.")
     else:
-        st.error("No se pudo actualizar el nombre. Intenta de nuevo mas tarde.")
+        st.error("No se pudo actualizar el portafolio. Intenta de nuevo mas tarde.")
 
 
 @st.dialog("Eliminar portafolio")
@@ -94,10 +100,11 @@ def confirm_portfolio_deletion(portfolio):
             st.error("No se pudo eliminar el portafolio. Intenta de nuevo mas tarde.")
 
 
-def create_portfolio(name):
+def create_portfolio(name, description=""):
     """Create a portfolio and select it. Return True on success; otherwise
     show the error and return False."""
     name = name.strip()
+    description = description.strip() or None
     if not name:
         st.error("Introduce un nombre para el portafolio.")
         return False
@@ -105,7 +112,7 @@ def create_portfolio(name):
         created = requests.post(
             url=PORTFOLIOS_URL,
             headers=auth_headers(),
-            json={"name": name},
+            json={"name": name, "description": description},
             timeout=5,
         )
     except requests.RequestException:
@@ -154,8 +161,9 @@ if not portfolios:
     st.info("No portfolios yet. Create a portfolio")
     with st.form("create_first_portfolio"):
         portfolio_name = st.text_input("Nombre del portafolio", max_chars=100)
+        portfolio_description = st.text_area("Descripcion (opcional)", max_chars=255)
         submitted = st.form_submit_button("Create portfolio", type="primary")
-    if submitted and create_portfolio(portfolio_name):
+    if submitted and create_portfolio(portfolio_name, portfolio_description):
         st.rerun()
     st.stop()
 
@@ -177,8 +185,11 @@ selected_id = selector_column.selectbox(
 st.session_state["selected_portfolio_id"] = selected_id
 selected_portfolio = portfolios_by_id[selected_id]
 
-if rename_column.button("", icon=":material/edit:", help="Cambiar nombre del portafolio", key="open_rename_portfolio", width="stretch"):
-    rename_portfolio(selected_portfolio)
+if selected_portfolio.get("description"):
+    st.caption(selected_portfolio["description"])
+
+if rename_column.button("", icon=":material/edit:", help="Editar portafolio", key="open_rename_portfolio", width="stretch"):
+    edit_portfolio(selected_portfolio)
 if delete_column.button("", icon=":material/delete:", help="Eliminar portafolio", key="open_delete_portfolio", width="stretch"):
     confirm_portfolio_deletion(selected_portfolio)
 if create_column.button("Crear portafolio", icon=":material/add:", width="stretch"):
@@ -187,8 +198,9 @@ if create_column.button("Crear portafolio", icon=":material/add:", width="stretc
 if st.session_state.get("show_create_portfolio", False):
     with st.form("create_portfolio"):
         portfolio_name = st.text_input("Nombre del portafolio", max_chars=100)
+        portfolio_description = st.text_area("Descripcion (opcional)", max_chars=255)
         submitted = st.form_submit_button("Crear")
-    if submitted and create_portfolio(portfolio_name):
+    if submitted and create_portfolio(portfolio_name, portfolio_description):
         st.session_state["show_create_portfolio"] = False
         st.rerun()
 

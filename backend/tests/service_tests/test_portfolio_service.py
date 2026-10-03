@@ -1,4 +1,4 @@
-"""Tests for services/portfolio_service.py (create, list, rename, delete).
+"""Tests for services/portfolio_service.py (create, list, update, delete).
 
 Every method is a query (ownership checks, the case-insensitive name
 lookups, the cascade on delete), so all of these use a real database: a
@@ -128,6 +128,17 @@ async def test_create_portfolio(service, session, owner):
     assert await stored_names(session, owner) == ["Long Term"]
 
 
+# The description is stored as given; it's optional (None by default).
+async def test_create_portfolio_with_description(service, owner):
+    with_description = await service.create_portfolio(
+        PortfolioCreate(name="Main", description="Dividends"), owner.id
+    )
+    without_description = await service.create_portfolio(PortfolioCreate(name="Other"), owner.id)
+
+    assert with_description.description == "Dividends"
+    assert without_description.description is None
+
+
 # Names are compared case-insensitively, and nothing new is stored.
 @pytest.mark.parametrize("name", ["Long Term", "LONG TERM", "long term"])
 async def test_create_duplicate_name_is_406(service, session, owner, name):
@@ -206,6 +217,17 @@ async def test_rename_portfolio(service, session, owner):
 
     assert result.name == "Retirement"
     assert await stored_names(session, owner) == ["Retirement"]
+
+
+# The description is replaced, and None clears it.
+async def test_update_description(service, session, owner):
+    portfolio = await add_portfolio(session, owner, "Main")
+
+    result = await service.update_portfolio(portfolio.id, owner.id, "Main", "Dividends")
+    assert result.description == "Dividends"
+
+    result = await service.update_portfolio(portfolio.id, owner.id, "Main", None)
+    assert result.description is None
 
 
 # The portfolio itself doesn't count as a duplicate, so its name's case can
