@@ -75,12 +75,18 @@ async def update_portfolio_endpoint(
     updates: PortfolioUpdate,
     portfolio_id: int,
 ):
-    """Rename a portfolio.
+    """Rename a portfolio and replace its description (leaving
+    `description` out clears it).
 
     Errors: 404 if the portfolio doesn't exist or isn't yours, 409 if you
     already have another portfolio with that name (case-insensitive).
     """
-    return await service.update_portfolio(portfolio_id, user.id, new_name=updates.name)
+    return await service.update_portfolio(
+        portfolio_id,
+        user.id,
+        new_name=updates.name,
+        new_description=updates.description,
+    )
 
 
 @router.delete("/{portfolio_id}", status_code=204)
@@ -101,7 +107,7 @@ async def visualize_portfolio_endpoint(
     user: Annotated[User, Depends(get_current_user)],
     portfolio_id: int,
 ):
-    """Get one portfolio (id, name, owner).
+    """Get one portfolio (id, name, description, owner).
 
     Errors: 404 if the portfolio doesn't exist or isn't yours.
     """

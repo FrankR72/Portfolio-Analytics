@@ -1,6 +1,7 @@
-"""Create, list, rename, delete and fetch a user's portfolios.
+"""Create, list, update, delete and fetch a user's portfolios.
 
-Portfolio names are unique per user, compared case-insensitively.
+Portfolio names are unique per user, compared case-insensitively. The
+description is optional free text.
 
 Known issues (pending refactor): # Is this really a problem? How can a user write two portfolio requests with the same name at the same time?
     - A duplicate name returns 406 on create but 409 on rename.
@@ -48,6 +49,7 @@ class PortfolioService():
     
         new_portfolio = models.Portfolio(
             name=portfolio.name,
+            description=portfolio.description,
             user_id=user_id
         )
         self.db.add(new_portfolio)
@@ -93,8 +95,14 @@ class PortfolioService():
         await self.db.commit()
 
 
-    async def update_portfolio(self, portfolio_id: int, user_id: int, new_name: str):
-        """Rename a portfolio.
+    async def update_portfolio(
+        self,
+        portfolio_id: int,
+        user_id: int,
+        new_name: str,
+        new_description: str | None = None,
+    ):
+        """Replace a portfolio's name and description (None clears it).
 
         Raises:
             HTTPException: 404 if the portfolio isn't the user's, 409 if
@@ -130,6 +138,7 @@ class PortfolioService():
             )
     
         portfolio.name = new_name
+        portfolio.description = new_description
         await self.db.commit()
         await self.db.refresh(portfolio)
         return portfolio    
