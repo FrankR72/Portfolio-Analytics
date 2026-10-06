@@ -80,6 +80,11 @@ async def generate_text(system_prompt: str, user_prompt: str) -> LLMResult:
     text = response.choices[0].message.content if response.choices else None
     if not text or not text.strip():
         raise LLMUnavailableError("LLM returned an empty answer")
+    # "length" means the answer hit llm_max_tokens and was cut off mid-text
+    # (reasoning models can spend the whole budget "thinking"). A half
+    # summary is worse than none.
+    if response.choices[0].finish_reason == "length":
+        raise LLMUnavailableError("LLM answer was cut off (raise LLM_MAX_TOKENS or use a non-reasoning model)")
 
     usage = response.usage
     return LLMResult(
