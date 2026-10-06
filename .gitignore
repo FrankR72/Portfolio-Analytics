@@ -28,3 +28,5 @@ CLAUDE.md
 
 # Database
 *.db
+# LLM request logs (ai/request_log.py)
+backend/logs/
