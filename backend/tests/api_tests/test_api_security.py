@@ -42,6 +42,7 @@ ROUTES = [
     ("GET", "/api/portfolios/{portfolio_id}/unrealized_gains_distribution", {}, None),
     ("GET", "/api/portfolios/{portfolio_id}/performance", DATES, None),
     ("GET", "/api/portfolios/{portfolio_id}/stocks_performance", DATES, None),
+    ("POST", "/api/portfolios/{portfolio_id}/summary", {}, None),
     ("POST", "/api/transactions", {"portfolio_id": "{portfolio_id}"}, BUY),
     ("GET", "/api/transactions", {"portfolio_id": "{portfolio_id}"}, None),
     ("GET", "/api/transactions/closed", {"portfolio_id": "{portfolio_id}"}, None),

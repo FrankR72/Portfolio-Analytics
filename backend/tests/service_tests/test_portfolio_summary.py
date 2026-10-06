@@ -235,6 +235,20 @@ async def test_stranger_gets_404_and_nothing_is_sent(
     fake_llm.assert_not_called()
 
 
+async def test_stranger_gets_404_even_when_llm_not_configured(
+    service, session, stranger, portfolio, monkeypatch, fake_llm,
+):
+    # Ownership is checked before the configuration: a 503 here would tell
+    # the stranger the portfolio exists.
+    monkeypatch.setattr(settings, "llm_model", None)
+    await add_tx(session, portfolio, "AAPL", "BUY", 1, 100, "2026-01-05")
+
+    with pytest.raises(HTTPException) as exc:
+        await service.summarize(stranger.id, portfolio.id)
+
+    assert exc.value.status_code == 404
+
+
 async def test_llm_failure_is_raised_and_logged(
     service, session, owner, portfolio, current_price, performance, fake_llm, log_file,
 ):

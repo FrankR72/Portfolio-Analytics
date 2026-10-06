@@ -59,15 +59,19 @@ class PortfolioSummaryService:
             LLMUnavailableError: If the LLM isn't configured or the call
                 fails.
         """
-        # Check first, so an unconfigured app doesn't fetch prices for
-        # nothing.
+        # Ownership first (a cheap query, no prices): another user's
+        # portfolio must be a 404 even when the LLM isn't configured.
+        transactions = await self.holding_service.get_portfolio_transactions(portfolio_id, user_id)
+        if not transactions:
+            return EMPTY_PORTFOLIO_SUMMARY
+
+        # Before the price lookups, so an unconfigured app doesn't fetch
+        # prices for nothing.
         if not settings.llm_configured:
             raise LLMUnavailableError("LLM is not configured (LLM_BASE_URL / LLM_MODEL missing)")
 
         holdings = await self.holding_service.summarize_holdings(portfolio_id, user_id)
         closed = await self.transaction_service.get_closed_transactions(portfolio_id, user_id)
-        if not holdings and not closed:
-            return EMPTY_PORTFOLIO_SUMMARY
 
         performance = await self._performance_or_none(user_id, portfolio_id)
 
