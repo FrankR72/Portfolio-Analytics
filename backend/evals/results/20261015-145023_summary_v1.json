@@ -1,0 +1,562 @@
+{
+  "created_at": "2026-10-15T14:50:23",
+  "prompt_version": "summary_v1",
+  "settings": {
+    "temperature": 0.2,
+    "max_tokens": 500,
+    "disable_reasoning": true
+  },
+  "models": [
+    "nvidia/nemotron-3.5-super-vl:free"
+  ],
+  "cases": [
+    "gains_and_losses",
+    "all_gains",
+    "all_losses",
+    "concentrated",
+    "single_stock_new",
+    "missing_price",
+    "only_realized",
+    "no_performance",
+    "many_positions",
+    "large_amounts",
+    "no_prices_at_all"
+  ],
+  "summary": {
+    "nvidia/nemotron-3.5-super-vl:free": {
+      "answered": "11/11",
+      "avg_score": 0.891,
+      "median_latency_seconds": 1.6,
+      "checks": {
+        "length": "5/11",
+        "spanish": "11/11",
+        "exact_numbers": "11/11",
+        "key_figures": "11/11",
+        "mentions_symbols": "10/10",
+        "explains_missing_price": "2/2",
+        "no_advice": "11/11",
+        "no_currency": "11/11",
+        "no_meta_talk": "7/11"
+      }
+    }
+  },
+  "rows": [
+    {
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "case": "gains_and_losses",
+      "ok": true,
+      "latency_seconds": 18.47,
+      "output_tokens": 210,
+      "score": 1.0,
+      "checks": {
+        "length": {
+          "passed": true,
+          "detail": "107 words"
+        },
+        "spanish": {
+          "passed": true,
+          "detail": "34 es / 0 en markers"
+        },
+        "exact_numbers": {
+          "passed": true,
+          "detail": ""
+        },
+        "key_figures": {
+          "passed": true,
+          "detail": ""
+        },
+        "mentions_symbols": {
+          "passed": true,
+          "detail": ""
+        },
+        "explains_missing_price": {
+          "passed": null,
+          "detail": ""
+        },
+        "no_advice": {
+          "passed": true,
+          "detail": ""
+        },
+        "no_currency": {
+          "passed": true,
+          "detail": ""
+        },
+        "no_meta_talk": {
+          "passed": true,
+          "detail": ""
+        }
+      },
+      "answer": "El portafolio contiene dos posiciones abiertas. AAPL representa el 60.0% del total, por lo que tiene un peso importante, mientras que MSFT representa el 40.0%. No hay símbolos sin precio actual disponible.\n\nLa ganancia o pérdida no realizada total es de -500.00, con un retorno de -16.7%. AAPL aporta una ganancia no realizada de +500.00, mientras que MSFT muestra una pérdida no realizada de -1,000.00, siendo esta última la que más influye en el resultado negativo.\n\nPor ventas ya realizadas, se registra una ganancia de +150.00 en NVDA, con un retorno realizado de +50.0%.\n\nLa rentabilidad del portafolio entre el 2025-10-14 y el 2026-10-14 es de +8.2%."
+    },
+    {
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "case": "all_gains",
+      "ok": true,
+      "latency_seconds": 1.49,
+      "output_tokens": 195,
+      "score": 0.875,
+      "checks": {
+        "length": {
+          "passed": false,
+          "detail": "90 words"
+        },
+        "spanish": {
+          "passed": true,
+          "detail": "33 es / 0 en markers"
+        },
+        "exact_numbers": {
+          "passed": true,
+          "detail": ""
+        },
+        "key_figures": {
+          "passed": true,
+          "detail": ""
+        },
+        "mentions_symbols": {
+          "passed": true,
+          "detail": ""
+        },
+        "explains_missing_price": {
+          "passed": null,
+          "detail": ""
+        },
+        "no_advice": {
+          "passed": true,
+          "detail": ""
+        },
+        "no_currency": {
+          "passed": true,
+          "detail": ""
+        },
+        "no_meta_talk": {
+          "passed": true,
+          "detail": ""
+        }
+      },
+      "answer": "El portafolio está compuesto por tres posiciones: META con el 41.3% del peso, GOOGL con el 32.4% y AMZN con el 26.3%. META es la posición con mayor peso dentro del portafolio.\n\nLa ganancia no realizada total es de +1,180.00, lo que representa un retorno del +36.9%. Las posiciones que más influyen son META con +610.00, GOOGL con +320.00 y AMZN con +250.00.\n\nNo hay ventas realizadas registradas, por lo que no hay ganancia ni pérdida realizada.\n\nLa rentabilidad del portafolio entre el 2025-10-14 y el 2026-10-14 fue del +21.7%."
+    },
+    {
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "case": "all_losses",
+      "ok": true,
+      "latency_seconds": 1.45,
+      "output_tokens": 173,
+      "score": 0.875,
+      "checks": {
+        "length": {
+          "passed": false,
+          "detail": "81 words"
+        },
+        "spanish": {
+          "passed": true,
+          "detail": "30 es / 0 en markers"
+        },
+        "exact_numbers": {
+          "passed": true,
+          "detail": ""
+        },
+        "key_figures": {
+          "passed": true,
+          "detail": ""
+        },
+        "mentions_symbols": {
+          "passed": true,
+          "detail": ""
+        },
+        "explains_missing_price": {
+          "passed": null,
+          "detail": ""
+        },
+        "no_advice": {
+          "passed": true,
+          "detail": ""
+        },
+        "no_currency": {
+          "passed": true,
+          "detail": ""
+        },
+        "no_meta_talk": {
+          "passed": true,
+          "detail": ""
+        }
+      },
+      "answer": "El portafolio tiene dos posiciones. La mayor es INTC con un peso del 55.5%, seguida de PYPL con el 44.5%. No hay símbolos sin precio actual.\n\nLa ganancia no realizada total es de -1,050.00, con un retorno de -26.6%. Las posiciones que más influyen son INTC con -640.00 y PYPL con -410.00.\n\nPor ventas realizadas, el resultado es de -280.00, correspondiente a NKE con un retorno de -25.5%.\n\nLa rentabilidad del portafolio entre el 2025-10-14 y el 2026-10-14 fue de -14.3%."
+    },
+    {
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "case": "concentrated",
+      "ok": true,
+      "latency_seconds": 1.89,
+      "output_tokens": 182,
+      "score": 0.875,
+      "checks": {
+        "length": {
+          "passed": false,
+          "detail": "94 words"
+        },
+        "spanish": {
+          "passed": true,
+          "detail": "33 es / 0 en markers"
+        },
+        "exact_numbers": {
+          "passed": true,
+          "detail": ""
+        },
+        "key_figures": {
+          "passed": true,
+          "detail": ""
+        },
+        "mentions_symbols": {
+          "passed": true,
+          "detail": ""
+        },
+        "explains_missing_price": {
+          "passed": null,
+          "detail": ""
+        },
+        "no_advice": {
+          "passed": true,
+          "detail": ""
+        },
+        "no_currency": {
+          "passed": true,
+          "detail": ""
+        },
+        "no_meta_talk": {
+          "passed": true,
+          "detail": ""
+        }
+      },
+      "answer": "El portafolio está compuesto por tres posiciones. TSLA tiene el mayor peso con 90.6%, seguida por KO con 6.1% y PEP con 3.3%. Todas las posiciones cuentan con precio actual disponible.\n\nLa ganancia no realizada total es de +1,960.00, lo que representa un retorno de +24.1%. TSLA es la posición que más influye con una ganancia de +1,950.00, mientras que PEP muestra una pérdida de -10.00.\n\nNo hay ventas realizadas registradas, por lo que no se reporta ganancia ni pérdida realizada.\n\nLa rentabilidad del portafolio entre el 2025-10-14 y el 2026-10-14 es de +3.1%."
+    },
+    {
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "case": "single_stock_new",
+      "ok": true,
+      "latency_seconds": 2.46,
+      "output_tokens": 172,
+      "score": 1.0,
+      "checks": {
+        "length": {
+          "passed": true,
+          "detail": "102 words"
+        },
+        "spanish": {
+          "passed": true,
+          "detail": "36 es / 0 en markers"
+        },
+        "exact_numbers": {
+          "passed": true,
+          "detail": ""
+        },
+        "key_figures": {
+          "passed": true,
+          "detail": ""
+        },
+        "mentions_symbols": {
+          "passed": true,
+          "detail": ""
+        },
+        "explains_missing_price": {
+          "passed": null,
+          "detail": ""
+        },
+        "no_advice": {
+          "passed": true,
+          "detail": ""
+        },
+        "no_currency": {
+          "passed": true,
+          "detail": ""
+        },
+        "no_meta_talk": {
+          "passed": true,
+          "detail": ""
+        }
+      },
+      "answer": "El portafolio contiene una sola posición en NFLX, que representa el 100.0% del total. Al tener todo el peso en un activo, esta posición concentra completamente la exposición del portafolio.\n\nLa ganancia no realizada total es de +150.00, con una rentabilidad no realizada del +5.4%. Esta posición es la única que influye en esos totales, ya que no hay otros activos con precio disponible.\n\nNo hay ventas registradas, por lo que no existe ganancia ni pérdida realizada por operaciones cerradas.\n\nLa rentabilidad del portafolio entre el 2026-07-01 y el 2026-10-14 es del +5.4%. El historial es más reciente que el período solicitado."
+    },
+    {
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "case": "missing_price",
+      "ok": true,
+      "latency_seconds": 0.91,
+      "output_tokens": 136,
+      "score": 0.778,
+      "checks": {
+        "length": {
+          "passed": false,
+          "detail": "88 words"
+        },
+        "spanish": {
+          "passed": true,
+          "detail": "25 es / 0 en markers"
+        },
+        "exact_numbers": {
+          "passed": true,
+          "detail": ""
+        },
+        "key_figures": {
+          "passed": true,
+          "detail": ""
+        },
+        "mentions_symbols": {
+          "passed": true,
+          "detail": ""
+        },
+        "explains_missing_price": {
+          "passed": true,
+          "detail": ""
+        },
+        "no_advice": {
+          "passed": true,
+          "detail": ""
+        },
+        "no_currency": {
+          "passed": true,
+          "detail": ""
+        },
+        "no_meta_talk": {
+          "passed": false,
+          "detail": "no hay datos, performance"
+        }
+      },
+      "answer": "El portafolio contiene una posición abierta con precio disponible, AAPL, que representa el 100.0% del valor total. No hay precio actual disponible para XYZ, por lo que no se incluye en los totales.\n\nLa ganancia no realizada total es de +450.00, con una rentabilidad no realizada del +45.0%. Esta ganancia proviene íntegramente de la posición en AAPL.\n\nNo hay ventas realizadas registradas, por lo que no hay ganancia ni pérdida realizada que reportar.\n\nNo se incluye información de rentabilidad del período porque no hay datos de performance disponibles."
+    },
+    {
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "case": "only_realized",
+      "ok": true,
+      "latency_seconds": 1.34,
+      "output_tokens": 125,
+      "score": 0.75,
+      "checks": {
+        "length": {
+          "passed": false,
+          "detail": "82 words"
+        },
+        "spanish": {
+          "passed": true,
+          "detail": "24 es / 0 en markers"
+        },
+        "exact_numbers": {
+          "passed": true,
+          "detail": ""
+        },
+        "key_figures": {
+          "passed": true,
+          "detail": ""
+        },
+        "mentions_symbols": {
+          "passed": true,
+          "detail": ""
+        },
+        "explains_missing_price": {
+          "passed": null,
+          "detail": ""
+        },
+        "no_advice": {
+          "passed": true,
+          "detail": ""
+        },
+        "no_currency": {
+          "passed": true,
+          "detail": ""
+        },
+        "no_meta_talk": {
+          "passed": false,
+          "detail": "No se dispone, performance"
+        }
+      },
+      "answer": "El portafolio no tiene posiciones abiertas en este momento, por lo que no hay distribución de activos ni ganancias o pérdidas no realizadas que reportar.\n\nEn cuanto a las ventas ya realizadas, se vendieron 15 acciones de AMD con una ganancia de +600.00 y 10 acciones de DIS con una pérdida de -120.00. El total realizado suma +480.00.\n\nNo se dispone de información sobre el rendimiento del portafolio en un período determinado, ya que no hay fechas ni datos de performance disponibles."
+    },
+    {
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "case": "no_performance",
+      "ok": true,
+      "latency_seconds": 1.12,
+      "output_tokens": 186,
+      "score": 0.875,
+      "checks": {
+        "length": {
+          "passed": true,
+          "detail": "111 words"
+        },
+        "spanish": {
+          "passed": true,
+          "detail": "35 es / 0 en markers"
+        },
+        "exact_numbers": {
+          "passed": true,
+          "detail": ""
+        },
+        "key_figures": {
+          "passed": true,
+          "detail": ""
+        },
+        "mentions_symbols": {
+          "passed": true,
+          "detail": ""
+        },
+        "explains_missing_price": {
+          "passed": null,
+          "detail": ""
+        },
+        "no_advice": {
+          "passed": true,
+          "detail": ""
+        },
+        "no_currency": {
+          "passed": true,
+          "detail": ""
+        },
+        "no_meta_talk": {
+          "passed": false,
+          "detail": "no hay datos, performance"
+        }
+      },
+      "answer": "El portafolio contiene dos posiciones con precio disponible. NVDA representa el 74.2% del valor total, por lo que tiene un peso muy alto, mientras que ORCL representa el 25.8%. No hay símbolos sin precio actual.\n\nLa ganancia no realizada total es de +1,150.00, con un retorno de +31.1%. NVDA es la posición que más influye con una ganancia no realizada de +1,200.00, mientras que ORCL muestra una pérdida no realizada de -50.00.\n\nPor ventas ya realizadas, la ganancia total es de +500.00, proveniente de la venta de 5 acciones de NVDA con un retorno de +83.3%.\n\nNo se incluye información de rentabilidad del período porque no hay datos de performance disponibles."
+    },
+    {
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "case": "many_positions",
+      "ok": true,
+      "latency_seconds": 2.28,
+      "output_tokens": 233,
+      "score": 1.0,
+      "checks": {
+        "length": {
+          "passed": true,
+          "detail": "114 words"
+        },
+        "spanish": {
+          "passed": true,
+          "detail": "37 es / 0 en markers"
+        },
+        "exact_numbers": {
+          "passed": true,
+          "detail": ""
+        },
+        "key_figures": {
+          "passed": true,
+          "detail": ""
+        },
+        "mentions_symbols": {
+          "passed": null,
+          "detail": ""
+        },
+        "explains_missing_price": {
+          "passed": null,
+          "detail": ""
+        },
+        "no_advice": {
+          "passed": true,
+          "detail": ""
+        },
+        "no_currency": {
+          "passed": true,
+          "detail": ""
+        },
+        "no_meta_talk": {
+          "passed": true,
+          "detail": ""
+        }
+      },
+      "answer": "El portafolio contiene ocho posiciones con precio disponible, lideradas por AAPL con un peso del 19.8%, seguida de MSFT con el 18.1%. Ninguna posición domina de forma abrumadora, aunque estas dos concentran más de un tercio del valor total.\n\nLa ganancia no realizada total es de +1,790.00, lo que representa un retorno del +18.2%. Las posiciones que más aportan son AAPL con +800.00 y MSFT con +400.00, mientras que XOM y JNJ muestran pérdidas de -70.00 y -40.00 respectivamente. No hay símbolos sin precio actual.\n\nPor ventas realizadas, se registra una pérdida de -140.00 en BA, con un retorno de -15.6%.\n\nEntre el 2025-10-14 y el 2026-10-14, la rentabilidad del portafolio fue del +12.9%."
+    },
+    {
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "case": "large_amounts",
+      "ok": true,
+      "latency_seconds": 1.6,
+      "output_tokens": 239,
+      "score": 1.0,
+      "checks": {
+        "length": {
+          "passed": true,
+          "detail": "101 words"
+        },
+        "spanish": {
+          "passed": true,
+          "detail": "32 es / 0 en markers"
+        },
+        "exact_numbers": {
+          "passed": true,
+          "detail": ""
+        },
+        "key_figures": {
+          "passed": true,
+          "detail": ""
+        },
+        "mentions_symbols": {
+          "passed": true,
+          "detail": ""
+        },
+        "explains_missing_price": {
+          "passed": null,
+          "detail": ""
+        },
+        "no_advice": {
+          "passed": true,
+          "detail": ""
+        },
+        "no_currency": {
+          "passed": true,
+          "detail": ""
+        },
+        "no_meta_talk": {
+          "passed": true,
+          "detail": ""
+        }
+      },
+      "answer": "El portafolio contiene dos posiciones con precio disponible. La mayor parte del peso está en BRK-B, con un 65.9% del total, seguida por V con un 34.1%. El valor actual del portafolio es 2,936,000.00 frente a un costo de 2,490,000.00.\n\nLa ganancia no realizada total es +446,000.00, lo que representa un retorno de +17.9%. Las posiciones que más influyen son BRK-B, con +284,000.00, y V, con +162,000.00.\n\nPor ventas ya realizadas, se obtuvo una ganancia de +102,500.00 en MA, con un retorno de +25.0%.\n\nLa rentabilidad del portafolio entre 2025-10-14 y 2026-10-14 fue de +2.4%. No hay símbolos sin precio actual."
+    },
+    {
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "case": "no_prices_at_all",
+      "ok": true,
+      "latency_seconds": 2.2,
+      "output_tokens": 124,
+      "score": 0.778,
+      "checks": {
+        "length": {
+          "passed": false,
+          "detail": "84 words"
+        },
+        "spanish": {
+          "passed": true,
+          "detail": "18 es / 0 en markers"
+        },
+        "exact_numbers": {
+          "passed": true,
+          "detail": ""
+        },
+        "key_figures": {
+          "passed": true,
+          "detail": ""
+        },
+        "mentions_symbols": {
+          "passed": true,
+          "detail": ""
+        },
+        "explains_missing_price": {
+          "passed": true,
+          "detail": ""
+        },
+        "no_advice": {
+          "passed": true,
+          "detail": ""
+        },
+        "no_currency": {
+          "passed": true,
+          "detail": ""
+        },
+        "no_meta_talk": {
+          "passed": false,
+          "detail": "No hay información, no se proporciona, performance"
+        }
+      },
+      "answer": "El portafolio contiene dos posiciones abiertas, SHOP y SQ, pero no hay precio actual disponible para ninguna de ellas, por lo que no se incluyen en los totales del portafolio.\n\nNo se registra ganancia ni pérdida no realizada total porque no hay valores actuales para calcularla.\n\nPor ventas ya realizadas, se obtuvo una ganancia de +300.00 con una rentabilidad realizada de +25.0% en UBER, tras vender 20 acciones.\n\nNo hay información de rentabilidad del período porque no se proporcionaron fechas ni datos de performance."
+    }
+  ]
+}
