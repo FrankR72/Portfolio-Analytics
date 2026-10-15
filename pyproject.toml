@@ -29,6 +29,6 @@ dev = [
 [tool.pytest.ini_options]
 # Tests import app modules the same way the app does (`from models import models`,
 # `from services.x import ...`), so backend/app/ is the import root.
-pythonpath = ["backend/app"]
+pythonpath = ["backend/app", "backend"]  # backend/ for `evals.` (eval_tests)
 testpaths = ["backend/tests"]
 asyncio_mode = "auto"

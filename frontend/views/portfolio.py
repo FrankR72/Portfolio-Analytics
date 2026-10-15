@@ -6,6 +6,7 @@ import streamlit as st
 from components.analytics import render_analytics
 from components.closed_transactions import render_closed_transactions
 from components.holdings import render_holdings
+from components.overview import forget_summary, render_overview
 from components.transactions import render_transactions
 from session import auth_headers, end_session
 
@@ -88,6 +89,7 @@ def confirm_portfolio_deletion(portfolio):
         elif deleted.status_code in (204, 404):
             st.session_state.pop("selected_portfolio_id", None)
             st.session_state.pop("performance_cache", None)
+            forget_summary(portfolio["id"])
             for key in list(st.session_state):
                 if key == f"return_period_{portfolio['id']}" or key.startswith(f"return_chart_{portfolio['id']}_"):
                     st.session_state.pop(key, None)
@@ -215,7 +217,7 @@ overview_tab, holdings_tab, transactions_tab, closed_tab, analytics_tab = st.tab
 
 with overview_tab:
     if overview_tab.open:
-        st.info("Pending")
+        render_overview(selected_portfolio)
 
 with holdings_tab:
     if holdings_tab.open:

@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     llm_timeout_seconds: float = 60.0
     llm_max_tokens: int = 500
     llm_temperature: float = 0.2
+    # Reasoning models "think" before answering, and that thinking counts
+    # against llm_max_tokens, so a summary can come back empty. A summary
+    # doesn't need it. Sent as OpenRouter's `reasoning` option; set False
+    # for a provider that rejects unknown options.
+    llm_disable_reasoning: bool = True
 
     @property
     def llm_configured(self) -> bool:

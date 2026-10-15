@@ -68,6 +68,10 @@ async def generate_text(system_prompt: str, user_prompt: str) -> LLMResult:
                 ],
                 max_tokens=settings.llm_max_tokens,
                 temperature=settings.llm_temperature,
+                # Options outside the OpenAI standard go in extra_body.
+                extra_body=(
+                    {"reasoning": {"enabled": False}} if settings.llm_disable_reasoning else None
+                ),
             )
     except APIError as error:
         # Base class of connection errors, timeouts and every non-2xx status
@@ -77,14 +81,18 @@ async def generate_text(system_prompt: str, user_prompt: str) -> LLMResult:
 
     # Some providers answer 200 with no choices or empty content when the
     # model fails, so check instead of trusting the status code.
-    text = response.choices[0].message.content if response.choices else None
+    if not response.choices:
+        raise LLMUnavailableError("LLM returned no answer")
+    choice = response.choices[0]
+    # "length" means the answer hit llm_max_tokens: cut off mid-text, or
+    # empty if a reasoning model spent the whole budget thinking. Checked
+    # before the empty text, so the log names the real cause. A half
+    # summary is worse than none.
+    if choice.finish_reason == "length":
+        raise LLMUnavailableError("LLM answer was cut off (raise LLM_MAX_TOKENS or disable reasoning)")
+    text = choice.message.content
     if not text or not text.strip():
         raise LLMUnavailableError("LLM returned an empty answer")
-    # "length" means the answer hit llm_max_tokens and was cut off mid-text
-    # (reasoning models can spend the whole budget "thinking"). A half
-    # summary is worse than none.
-    if response.choices[0].finish_reason == "length":
-        raise LLMUnavailableError("LLM answer was cut off (raise LLM_MAX_TOKENS or use a non-reasoning model)")
 
     usage = response.usage
     return LLMResult(
