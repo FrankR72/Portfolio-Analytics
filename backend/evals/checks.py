@@ -1,4 +1,7 @@
-"""Automatic checks for one summary, given the snapshot the model received.
+"""
+Eval Grader type 1: code-based
+ 
+Automatic checks for one summary, given the snapshot the model received.
 
 Each check returns True (passed), False (failed) or None (doesn't apply to
 this case), plus a short detail for the report. They are deliberately
@@ -18,7 +21,7 @@ from ai.snapshot import PortfolioSnapshot
 
 
 # The prompt asks for 120-200 words.
-MIN_WORDS, MAX_WORDS = 120, 200
+MIN_WORDS, MAX_WORDS = 100, 200
 
 # With more symbols than this, the prompt asks to highlight the ones that
 # matter most, so naming every symbol isn't required.

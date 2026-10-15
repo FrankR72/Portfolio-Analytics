@@ -34,12 +34,12 @@ BACKEND = Path(__file__).resolve().parents[1]
 # Same imports as the app (rooted at backend/app/), plus `evals.` from backend/.
 sys.path[:0] = [str(BACKEND / "app"), str(BACKEND)]
 
-from ai.client import LLMUnavailableError, generate_text  # noqa: E402
-from ai.prompts import DEFAULT_PROMPT_VERSION, build_prompt  # noqa: E402
-from ai.snapshot import PortfolioSnapshot, build_snapshot  # noqa: E402
-from core.config import settings  # noqa: E402
-from db.schemas import ClosedTransaction, HoldingBase  # noqa: E402
-from evals.checks import run_checks, score  # noqa: E402
+from ai.client import LLMUnavailableError, generate_text
+from ai.prompts import DEFAULT_PROMPT_VERSION, build_prompt
+from ai.snapshot import PortfolioSnapshot, build_snapshot
+from core.config import settings
+from db.schemas import ClosedTransaction, HoldingBase
+from evals.checks import run_checks, score
 
 
 CASES_FILE = Path(__file__).parent / "portfolio_cases.json"
@@ -127,22 +127,41 @@ async def run_one(model: str, case: dict, prompt_version: str) -> dict:
     }
 
 
-def print_report(rows: list[dict], show: bool) -> None:
-    """Per-model table, then (with --show) every answer and its failed checks."""
+def summarize_rows(rows: list[dict]) -> dict[str, dict]:
+    """Per-model totals: answered calls, average score, median latency and
+    how many answers passed each check. Saved in the results file and
+    printed by print_report, so both always show the same numbers."""
+    summary = {}
     for model in dict.fromkeys(r["model"] for r in rows):
         mine = [r for r in rows if r["model"] == model]
         ok = [r for r in mine if r["ok"]]
-        print(f"\n=== {model}")
-        print(f"  answered: {len(ok)}/{len(mine)}", end="")
+        entry = {"answered": f"{len(ok)}/{len(mine)}"}
         if not ok:
-            print(f"  (first error: {mine[0].get('error')})")
+            entry["first_error"] = mine[0].get("error")
+        else:
+            entry["avg_score"] = round(statistics.mean(r["score"] for r in ok), 3)
+            entry["median_latency_seconds"] = round(statistics.median(r["latency_seconds"] for r in ok), 2)
+            entry["checks"] = {}
+            for name in ok[0]["checks"]:
+                # Only the answers where the check applies (None = not applicable).
+                passed = [r["checks"][name]["passed"] for r in ok if r["checks"][name]["passed"] is not None]
+                if passed:
+                    entry["checks"][name] = f"{sum(passed)}/{len(passed)}"
+        summary[model] = entry
+    return summary
+
+
+def print_report(rows: list[dict], show: bool) -> None:
+    """Per-model table, then (with --show) every answer and its failed checks."""
+    for model, entry in summarize_rows(rows).items():
+        print(f"\n=== {model}")
+        if "first_error" in entry:
+            print(f"  answered: {entry['answered']}  (first error: {entry['first_error']})")
             continue
-        print(f"   avg score: {statistics.mean(r['score'] for r in ok):.0%}"
-              f"   median latency: {statistics.median(r['latency_seconds'] for r in ok):.1f}s")
-        for name in ok[0]["checks"]:
-            results = [r["checks"][name]["passed"] for r in ok if r["checks"][name]["passed"] is not None]
-            if results:
-                print(f"    {name:<24} {sum(results)}/{len(results)}")
+        print(f"  answered: {entry['answered']}   avg score: {entry['avg_score']:.0%}"
+              f"   median latency: {entry['median_latency_seconds']:.1f}s")
+        for name, passed in entry["checks"].items():
+            print(f"    {name:<24} {passed}")
 
     if show:
         for r in rows:
@@ -215,6 +234,7 @@ async def main() -> None:
         },
         "models": models,
         "cases": [c["id"] for c in cases],
+        "summary": summarize_rows(rows),
         "rows": rows,
     }, indent=2, ensure_ascii=False), encoding="utf-8")
 
