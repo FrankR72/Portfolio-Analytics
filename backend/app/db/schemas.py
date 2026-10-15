@@ -97,6 +97,11 @@ class TransactionUpdate(BaseModel):
     price: float | None = Field(default=None, gt=0)
 
 
+class PortfolioSummary(BaseModel):
+    """Plain-language summary of a portfolio, written by an LLM."""
+    summary: str
+
+
 class ClosedTransaction(BaseModel):
     transaction_date: datetime
     symbol: str = Field(min_length=1)

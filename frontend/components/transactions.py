@@ -5,6 +5,7 @@ from datetime import date
 import requests
 import streamlit as st
 
+from components.overview import forget_summary
 from session import auth_headers, end_session
 
 
@@ -54,6 +55,8 @@ def add_transaction_dialog(portfolio):
                 st.error("No se pudo conectar con el servidor.")
             else:
                 if created.status_code in (200, 201):
+                    # The summary no longer matches the portfolio.
+                    forget_summary(portfolio["id"])
                     st.success("Transacción guardada. Puedes agregar otra o cerrar este diálogo.")
                 elif created.status_code == 404:
                     st.error("El portafolio ya no está disponible.")
@@ -95,6 +98,7 @@ def confirm_transaction_deletion(portfolio, transaction):
             # Returns and gains change, so drop cached performance data, and
             # give the table a new key so the deleted row's selection is gone.
             st.session_state.pop("performance_cache", None)
+            forget_summary(portfolio["id"])
             st.session_state["transactions_table_version"] = st.session_state.get("transactions_table_version", 0) + 1
             st.session_state["transaction_delete_notice"] = (
                 "Transacción eliminada."

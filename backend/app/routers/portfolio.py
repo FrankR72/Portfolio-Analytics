@@ -1,7 +1,8 @@
 """Portfolio routes, mounted at /api/portfolios. Requires a bearer token.
 
 CRUD for the user's portfolios, plus the analytics used by the charts page
-(allocation, unrealized gains and return over time).
+(allocation, unrealized gains and return over time) and the LLM-written
+summary (ai/portfolio_summary.py).
 
 Known issues (pending refactor):
     - A duplicate name returns 406 on create but 409 on rename.
@@ -18,12 +19,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import get_db
 from models.models import User
-from db.schemas import PortfolioPrivate, PortfolioCreate, PortfolioUpdate
+from db.schemas import PortfolioPrivate, PortfolioCreate, PortfolioUpdate, PortfolioSummary
 
 from services.portfolio_service import PortfolioService
 from routers.auth import get_current_user
 
 from services.analytic_service import AnalyticService
+from ai.client import LLMUnavailableError
+from ai.portfolio_summary import PortfolioSummaryService
 
 from datetime import date
 from fastapi import HTTPException
@@ -39,6 +42,10 @@ def get_portfolio_service(db: Annotated[AsyncSession, Depends(get_db)]) -> Portf
 def get_analytic_service(db: Annotated[AsyncSession, Depends(get_db)]) -> AnalyticService:
     """Build an AnalyticService on the request's database session."""
     return AnalyticService(session=db)
+
+def get_portfolio_summary_service(db: Annotated[AsyncSession, Depends(get_db)]) -> PortfolioSummaryService:
+    """Build a PortfolioSummaryService on the request's database session."""
+    return PortfolioSummaryService(session=db)
 
 
 @router.get("", response_model=list[PortfolioPrivate])
@@ -213,3 +220,29 @@ async def get_stock_performances_endpoint(
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/{portfolio_id}/summary", response_model=PortfolioSummary)
+async def summarize_portfolio_endpoint(
+    portfolio_id: int,
+    service: Annotated[PortfolioSummaryService, Depends(get_portfolio_summary_service)],
+    user: Annotated[User, Depends(get_current_user)],
+):
+    """Plain-language summary of a portfolio, in Spanish, written by an LLM.
+
+    POST because every call generates a new text and uses the model's quota.
+    The numbers come from the holdings, closed transactions and the return
+    of the last 365 days; the model only puts them into words. A portfolio
+    with no transactions gets a fixed text without calling the model.
+
+    Errors: 404 if the portfolio doesn't exist or isn't yours, 400 if its
+    transaction history is invalid, 503 if the LLM isn't configured or
+    fails (timeout, rate limit, provider down).
+    """
+    try:
+        summary = await service.summarize(user_id=user.id, portfolio_id=portfolio_id)
+    except LLMUnavailableError as exc:
+        # The provider's message stays in the server log (request_log); the
+        # client only needs to know to try again later.
+        raise HTTPException(status_code=503, detail="Summary not available right now") from exc
+    return {"summary": summary}

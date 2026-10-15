@@ -1,0 +1,117 @@
+[
+  {
+    "id": "gains_and_losses",
+    "description": "Typical portfolio: one winner, one loser, one closed sale, positive year.",
+    "holdings": [
+      {"symbol": "AAPL", "shares": 10, "cost": 1000, "value": 1500},
+      {"symbol": "MSFT", "shares": 5, "cost": 2000, "value": 1000}
+    ],
+    "sales": [{"symbol": "NVDA", "shares": 3, "cost": 300, "proceeds": 450}],
+    "performance": {"start_date": "2025-10-14", "end_date": "2026-10-14", "return_percentage": 8.25, "history_limited": false}
+  },
+  {
+    "id": "all_gains",
+    "description": "Everything up, no sales: the model must not invent a realized gain.",
+    "holdings": [
+      {"symbol": "GOOGL", "shares": 8, "cost": 1100, "value": 1420},
+      {"symbol": "AMZN", "shares": 6, "cost": 900, "value": 1150},
+      {"symbol": "META", "shares": 3, "cost": 1200, "value": 1810}
+    ],
+    "sales": [],
+    "performance": {"start_date": "2025-10-14", "end_date": "2026-10-14", "return_percentage": 21.7, "history_limited": false}
+  },
+  {
+    "id": "all_losses",
+    "description": "Everything down, including the sale and the year: tone must stay neutral, signs negative.",
+    "holdings": [
+      {"symbol": "INTC", "shares": 50, "cost": 2250, "value": 1610},
+      {"symbol": "PYPL", "shares": 20, "cost": 1700, "value": 1290}
+    ],
+    "sales": [{"symbol": "NKE", "shares": 10, "cost": 1100, "proceeds": 820}],
+    "performance": {"start_date": "2025-10-14", "end_date": "2026-10-14", "return_percentage": -14.3, "history_limited": false}
+  },
+  {
+    "id": "concentrated",
+    "description": "One position is about 90% of the portfolio: the model should point it out.",
+    "holdings": [
+      {"symbol": "TSLA", "shares": 30, "cost": 7200, "value": 9150},
+      {"symbol": "KO", "shares": 10, "cost": 600, "value": 620},
+      {"symbol": "PEP", "shares": 2, "cost": 340, "value": 330}
+    ],
+    "sales": [],
+    "performance": {"start_date": "2025-10-14", "end_date": "2026-10-14", "return_percentage": 3.1, "history_limited": false}
+  },
+  {
+    "id": "single_stock_new",
+    "description": "One stock, bought recently: history_limited is true, so the period is shorter than a year.",
+    "holdings": [{"symbol": "NFLX", "shares": 4, "cost": 2800, "value": 2950}],
+    "sales": [],
+    "performance": {"start_date": "2026-07-01", "end_date": "2026-10-14", "return_percentage": 5.36, "history_limited": true}
+  },
+  {
+    "id": "missing_price",
+    "description": "One symbol without a current price and no performance: mention the missing price, nothing about missing data.",
+    "holdings": [
+      {"symbol": "AAPL", "shares": 10, "cost": 1000, "value": 1450},
+      {"symbol": "XYZ", "shares": 100, "cost": 500, "value": null}
+    ],
+    "sales": [],
+    "performance": null
+  },
+  {
+    "id": "only_realized",
+    "description": "Everything already sold: no open positions, one gain and one loss.",
+    "holdings": [],
+    "sales": [
+      {"symbol": "AMD", "shares": 15, "cost": 1500, "proceeds": 2100},
+      {"symbol": "DIS", "shares": 10, "cost": 1000, "proceeds": 880}
+    ],
+    "performance": null
+  },
+  {
+    "id": "no_performance",
+    "description": "Open positions and sales but no return (e.g. a stock split): the model must not talk about the missing return.",
+    "holdings": [
+      {"symbol": "NVDA", "shares": 20, "cost": 2400, "value": 3600},
+      {"symbol": "ORCL", "shares": 10, "cost": 1300, "value": 1250}
+    ],
+    "sales": [{"symbol": "NVDA", "shares": 5, "cost": 600, "proceeds": 1100}],
+    "performance": null
+  },
+  {
+    "id": "many_positions",
+    "description": "Eight positions: the model must summarize instead of listing everything, without inventing numbers.",
+    "holdings": [
+      {"symbol": "AAPL", "shares": 10, "cost": 1500, "value": 2300},
+      {"symbol": "MSFT", "shares": 5, "cost": 1700, "value": 2100},
+      {"symbol": "GOOGL", "shares": 10, "cost": 1300, "value": 1650},
+      {"symbol": "AMZN", "shares": 8, "cost": 1400, "value": 1480},
+      {"symbol": "JPM", "shares": 6, "cost": 1100, "value": 1260},
+      {"symbol": "XOM", "shares": 10, "cost": 1150, "value": 1080},
+      {"symbol": "JNJ", "shares": 6, "cost": 980, "value": 940},
+      {"symbol": "WMT", "shares": 9, "cost": 700, "value": 810}
+    ],
+    "sales": [{"symbol": "BA", "shares": 4, "cost": 900, "proceeds": 760}],
+    "performance": {"start_date": "2025-10-14", "end_date": "2026-10-14", "return_percentage": 12.94, "history_limited": false}
+  },
+  {
+    "id": "large_amounts",
+    "description": "Amounts in the millions: thousands separators must be copied exactly.",
+    "holdings": [
+      {"symbol": "BRK-B", "shares": 4000, "cost": 1650000, "value": 1934000},
+      {"symbol": "V", "shares": 3000, "cost": 840000, "value": 1002000}
+    ],
+    "sales": [{"symbol": "MA", "shares": 1000, "cost": 410000, "proceeds": 512500}],
+    "performance": {"start_date": "2025-10-14", "end_date": "2026-10-14", "return_percentage": 2.4, "history_limited": false}
+  },
+  {
+    "id": "no_prices_at_all",
+    "description": "Every price lookup failed: no totals, only cost and a sale. The model must not make up values.",
+    "holdings": [
+      {"symbol": "SHOP", "shares": 10, "cost": 900, "value": null},
+      {"symbol": "SQ", "shares": 15, "cost": 1050, "value": null}
+    ],
+    "sales": [{"symbol": "UBER", "shares": 20, "cost": 1200, "proceeds": 1500}],
+    "performance": null
+  }
+]

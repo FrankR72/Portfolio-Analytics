@@ -15,7 +15,8 @@ How it works:
       create_all on test.db never runs; the `session` fixture creates the
       tables itself.
     - yfinance is blocked in every test (block_yfinance). Tests that need
-      prices patch them explicitly.
+      prices patch them explicitly. The LLM is blocked the same way
+      (block_llm), and its log goes to a temporary file.
     - An exception the app doesn't handle is re-raised in the test instead
       of becoming a 500 response, so a bug shows its full traceback.
 
@@ -51,6 +52,18 @@ def block_yfinance(mocker):
     """
     fake_yf = mocker.patch("services.market_data_service.yf")
     fake_yf.Ticker.side_effect = RuntimeError("yfinance must not be called in tests")
+
+
+@pytest.fixture(autouse=True)
+def block_llm(mocker, tmp_path, monkeypatch):
+    """Make every real LLM call fail, in every API test, even with a .env.
+
+    Blocked at the client class, like yfinance above. Tests that need an
+    answer patch ai.portfolio_summary.generate_text. LLM log lines go to a
+    temporary file instead of backend/logs/.
+    """
+    mocker.patch("ai.client.AsyncOpenAI", side_effect=RuntimeError("The LLM must not be called in tests"))
+    monkeypatch.setattr("ai.request_log.LOG_FILE", tmp_path / "llm_requests.jsonl")
 
 
 # ---------------------------------------------------------------------------

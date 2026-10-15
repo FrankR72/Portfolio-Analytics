@@ -8,6 +8,8 @@ dependencies = [
     "aiosqlite>=0.22.1",
     "alembic>=1.20.0",
     "fastapi[standard]>=0.139.2",
+    "ollama>=0.6.3",
+    "openai>=3.24.0",
     "psycopg[binary]>=3.3.6",
     "pwdlib[argon2]>=0.3.0",
     "pydantic>=2.13.4",
@@ -27,6 +29,6 @@ dev = [
 [tool.pytest.ini_options]
 # Tests import app modules the same way the app does (`from models import models`,
 # `from services.x import ...`), so backend/app/ is the import root.
-pythonpath = ["backend/app"]
+pythonpath = ["backend/app", "backend"]  # backend/ for `evals.` (eval_tests)
 testpaths = ["backend/tests"]
 asyncio_mode = "auto"

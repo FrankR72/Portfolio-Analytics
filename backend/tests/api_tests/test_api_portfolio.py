@@ -3,7 +3,9 @@
 Requests go through the real app with an in-memory database (see
 conftest.py). Transactions for the analytics routes are inserted directly
 with `add_tx`, and prices are patched in services.analytic_service, so
-yfinance is never called. The analytics math is covered by
+yfinance is never called. For /summary the LLM answer is patched in
+ai.portfolio_summary (the coordinator is covered by
+test_portfolio_summary.py); here only the status codes and the body. The analytics math is covered by
 test_analytic_service.py; here each route only gets a happy path with easy
 numbers plus the status codes the router adds.
 
@@ -20,6 +22,9 @@ import pandas as pd
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from ai.client import LLMResult, LLMUnavailableError
+from ai.portfolio_summary import EMPTY_PORTFOLIO_SUMMARY
+from core.config import settings
 from main import app
 
 
@@ -479,3 +484,96 @@ async def test_stocks_performance_invalid_range_returns_422(client, owner, portf
 
     assert response.status_code == 422
     assert response.json()["detail"] == "Use start <= end, with end no later than today"
+
+
+# ---------------------------------------------------------------------------
+# POST /api/portfolios/{id}/summary
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def llm_configured(monkeypatch):
+    """A configured LLM, whatever the .env says (CI has none)."""
+    monkeypatch.setattr(settings, "llm_base_url", "http://fake-llm/v1")
+    monkeypatch.setattr(settings, "llm_model", "fake-model")
+
+
+@pytest.fixture
+def llm_answer(mocker):
+    """The model's answer, patched where the coordinator imported it."""
+    return mocker.patch(
+        "ai.portfolio_summary.generate_text",
+        return_value=LLMResult(text="Resumen de prueba.", model="fake-model", latency_seconds=1.0),
+    )
+
+
+@pytest.fixture
+def holding_price(mocker):
+    """Fake current price for the holdings (patched in holding_service)."""
+    return mocker.patch("services.holding_service.get_current_stock_price", return_value=150.0)
+
+
+# Happy path: 200 with the model's text. Performance can't be computed here
+# (yfinance is blocked), so the summary goes ahead without it.
+async def test_summary(client, owner, portfolio, add_tx, llm_configured, llm_answer, holding_price):
+    await add_tx(portfolio, "AAPL", "BUY", 10, 100.0, "2026-01-05")
+
+    response = await client.post(f"/api/portfolios/{portfolio['id']}/summary", headers=owner.headers)
+
+    assert response.status_code == 200
+    assert response.json() == {"summary": "Resumen de prueba."}
+    llm_answer.assert_called_once()
+
+
+# No transactions: 200 with the fixed text, even with no LLM configured.
+async def test_summary_empty_portfolio(client, owner, portfolio, monkeypatch, llm_answer):
+    monkeypatch.setattr(settings, "llm_model", None)
+
+    response = await client.post(f"/api/portfolios/{portfolio['id']}/summary", headers=owner.headers)
+
+    assert response.status_code == 200
+    assert response.json() == {"summary": EMPTY_PORTFOLIO_SUMMARY}
+    llm_answer.assert_not_called()
+
+
+# No LLM configured: 503.
+async def test_summary_not_configured_returns_503(client, owner, portfolio, add_tx, monkeypatch):
+    monkeypatch.setattr(settings, "llm_model", None)
+    await add_tx(portfolio, "AAPL", "BUY", 10, 100.0, "2026-01-05")
+
+    response = await client.post(f"/api/portfolios/{portfolio['id']}/summary", headers=owner.headers)
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Summary not available right now"
+
+
+# The model fails (timeout, 429...): 503, without the provider's message.
+async def test_summary_llm_failure_returns_503(
+    client, owner, portfolio, add_tx, llm_configured, llm_answer, holding_price,
+):
+    llm_answer.side_effect = LLMUnavailableError("LLM request failed: 429 secret provider details")
+    await add_tx(portfolio, "AAPL", "BUY", 10, 100.0, "2026-01-05")
+
+    response = await client.post(f"/api/portfolios/{portfolio['id']}/summary", headers=owner.headers)
+
+    assert response.status_code == 503
+    assert "429" not in response.text
+
+
+# A SELL with no shares bought before it: the services' 400, no model call.
+async def test_summary_invalid_history_returns_400(
+    client, owner, portfolio, add_tx, llm_configured, llm_answer, holding_price,
+):
+    await add_tx(portfolio, "AAPL", "SELL", 1, 100.0, "2026-01-05")
+
+    response = await client.post(f"/api/portfolios/{portfolio['id']}/summary", headers=owner.headers)
+
+    assert response.status_code == 400
+    llm_answer.assert_not_called()
+
+
+# GET isn't allowed: generating a summary is an action (POST).
+async def test_summary_get_returns_405(client, owner, portfolio):
+    response = await client.get(f"/api/portfolios/{portfolio['id']}/summary", headers=owner.headers)
+
+    assert response.status_code == 405
+
