@@ -4,9 +4,6 @@ Unlike the other service tests, these use a real database: a fresh in-memory
 SQLite per test. The logic being tested is the queries themselves
 (case-insensitive username and email lookups), so mocking the session would
 leave nothing to test.
-
-The duplicate-username test expects 406, the current status code. It is a
-known issue (it should be 409), so update the test when that is fixed.
 """
 
 import pytest
@@ -73,15 +70,15 @@ async def test_create_user(service, session):
     assert await count_user(session) == 1
 
 
-# Same username with a different email: rejected with 406 (see the module
-# docstring), and the second user is not inserted.
+# Same username with a different email: rejected with 409, and the second
+# user is not inserted.
 async def test_duplicate_user_is_rejected(service, session):
     await service.create_user(make_user())
 
     with pytest.raises(HTTPException) as exc:
         await service.create_user(make_user(email="yukiomishima@gmail.com"))
 
-    assert exc.value.status_code == 406
+    assert exc.value.status_code == 409
     assert await count_user(session) == 1
 
 

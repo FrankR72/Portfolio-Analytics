@@ -5,9 +5,6 @@ conftest.py). The service tests already cover the lookup logic; these check
 what the HTTP layer adds: the 201 status, the response body filtered by
 response_model, Pydantic's 422 for an invalid body, and that no token is
 needed.
-
-The duplicate-username test expects 406, the current status code. It is a
-known issue (it should be 409), so update the test when that is fixed.
 """
 
 from sqlalchemy import func, select
@@ -42,8 +39,8 @@ async def test_create_user(client, session):
     assert await count_users(session) == 1
 
 
-# Same username in a different case: 406 (see the module docstring), and the
-# second user is not inserted.
+# Same username in a different case: 409, and the second user is not
+# inserted.
 async def test_duplicate_username_is_rejected(client, session, create_user):
     await create_user(username="Geralt", email="geralt@example.com")
 
@@ -52,7 +49,7 @@ async def test_duplicate_username_is_rejected(client, session, create_user):
         json={"username": "GERALT", "email": "other@example.com", "password": "fakepassword"},
     )
 
-    assert response.status_code == 406
+    assert response.status_code == 409
     assert response.json()["detail"] == "Username already exists"
     assert await count_users(session) == 1
 

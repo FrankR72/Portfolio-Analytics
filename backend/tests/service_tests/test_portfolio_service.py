@@ -4,10 +4,6 @@ Every method is a query (ownership checks, the case-insensitive name
 lookups, the cascade on delete), so all of these use a real database: a
 fresh in-memory SQLite per test, like test_user_service.py. There is no
 market data here, so nothing needs mocking.
-
-The duplicate-name test on create expects 406, the current status code. It
-is a known issue (it should be 409, like rename), so update the test when
-that is fixed.
 """
 
 from datetime import UTC, datetime
@@ -141,13 +137,13 @@ async def test_create_portfolio_with_description(service, owner):
 
 # Names are compared case-insensitively, and nothing new is stored.
 @pytest.mark.parametrize("name", ["Long Term", "LONG TERM", "long term"])
-async def test_create_duplicate_name_is_406(service, session, owner, name):
+async def test_create_duplicate_name_is_409(service, session, owner, name):
     await add_portfolio(session, owner, "Long Term")
 
     with pytest.raises(HTTPException) as error:
         await service.create_portfolio(PortfolioCreate(name=name), owner.id)
 
-    assert error.value.status_code == 406
+    assert error.value.status_code == 409
     assert error.value.detail == "Portfolio name already exists"
     assert await stored_names(session, owner) == ["Long Term"]
 

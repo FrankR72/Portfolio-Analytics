@@ -5,7 +5,6 @@ rejecting oversells), lists them, and computes realized gains per SELL with
 position_accounting_service.
 
 Known issues (pending refactor):
-    - Creating a transaction returns 200 instead of 201.
     - The portfolio ownership check is re-implemented in every method.
 """
 

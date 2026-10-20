@@ -13,7 +13,6 @@ Access by another user (404) and requests without a token (401) are in
 test_api_security.py.
 
 Tests that pin known issues (update them when those are fixed):
-    - A duplicate name on create returns 406 (it should be 409, like rename).
     - A failed price lookup on /distribution and
       /unrealized_gains_distribution returns 500.
 """
@@ -108,11 +107,11 @@ async def test_create_portfolio_blank_description_is_null(client, owner):
     assert response.json()["description"] is None
 
 
-# Same name in a different case: 406 (see the module docstring).
+# Same name in a different case: 409, like a rename to a taken name.
 async def test_create_duplicate_name_is_rejected(client, owner, portfolio):
     response = await client.post("/api/portfolios", json={"name": "MAIN"}, headers=owner.headers)
 
-    assert response.status_code == 406
+    assert response.status_code == 409
     assert response.json()["detail"] == "Portfolio name already exists"
 
 

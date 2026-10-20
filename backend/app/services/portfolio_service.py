@@ -4,7 +4,6 @@ Portfolio names are unique per user, compared case-insensitively. The
 description is optional free text.
 
 Known issues (pending refactor): # Is this really a problem? How can a user write two portfolio requests with the same name at the same time?
-    - A duplicate name returns 406 on create but 409 on rename.
     - Name uniqueness is only checked in Python, with no database
       constraint, so two requests at the same moment can create duplicates.
     - The portfolio ownership check is re-implemented in every method.
@@ -29,7 +28,7 @@ class PortfolioService():
         """Create a portfolio for the user.
 
         Raises:
-            HTTPException: 406 if the user already has a portfolio with that
+            HTTPException: 409 if the user already has a portfolio with that
                 name (case-insensitive).
         """
         result = await self.db.execute(
@@ -42,7 +41,7 @@ class PortfolioService():
         portfolio_exists = result.scalars().first()
         if portfolio_exists:
             raise HTTPException(
-                status_code=status.HTTP_406_NOT_ACCEPTABLE,
+                status_code=status.HTTP_409_CONFLICT,
                 detail="Portfolio name already exists"
             )
         

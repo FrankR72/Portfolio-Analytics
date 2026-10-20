@@ -1,7 +1,6 @@
 """User sign-up.
 
 Known issues (pending refactor):
-    - A duplicate username returns 406 instead of 409.
     - Username and email uniqueness is checked case-insensitively in Python,
       but the database constraint is case-sensitive, so two requests at the
       same moment can create duplicates.
@@ -31,7 +30,7 @@ class UserService:
         case.
 
         Raises:
-            HTTPException: 406 if the username is taken, 400 if the email is
+            HTTPException: 409 if the username is taken, 400 if the email is
                 already registered (both compared case-insensitively).
         """
         result = await self.db.execute(
@@ -42,7 +41,7 @@ class UserService:
         user_exists = result.scalars().first()
         if user_exists:
             raise HTTPException(
-                status_code=status.HTTP_406_NOT_ACCEPTABLE,
+                status_code=status.HTTP_409_CONFLICT,
                 detail="Username already exists"
             ) 
         result = await self.db.execute(

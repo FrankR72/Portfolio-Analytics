@@ -54,7 +54,7 @@ def add_transaction_dialog(portfolio):
             except requests.RequestException:
                 st.error("No se pudo conectar con el servidor.")
             else:
-                if created.status_code in (200, 201):
+                if created.status_code == 201:
                     # The summary no longer matches the portfolio.
                     forget_summary(portfolio["id"])
                     st.success("Transacción guardada. Puedes agregar otra o cerrar este diálogo.")
