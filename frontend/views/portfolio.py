@@ -125,7 +125,7 @@ def create_portfolio(name, description=""):
         return True
     if created.status_code == 401:
         end_session()
-    if created.status_code == 406:
+    if created.status_code == 409:
         st.error("Ya tienes un portafolio con ese nombre.")
     else:
         st.error("No se pudo crear el portafolio.")

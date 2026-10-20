@@ -3,12 +3,11 @@
 Every route takes the portfolio as the `portfolio_id` query parameter.
 
 Known issues (pending refactor):
-    - Registering a transaction returns 200 instead of 201.
     - The portfolio id is a query parameter here but a path parameter in
       /api/holdings/{id}.
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,7 +36,8 @@ def get_transaction_service(db: Annotated[AsyncSession, Depends(get_db)]):
 
 @router.post(
     "",
-    response_model=TransactionPrivate
+    response_model=TransactionPrivate,
+    status_code=status.HTTP_201_CREATED,
 )
 async def register_transaction_endpoint(
     service: Annotated[TransactionService, Depends(get_transaction_service)],
@@ -45,7 +45,7 @@ async def register_transaction_endpoint(
     portfolio_id: int,
     user: Annotated[User, Depends(get_current_user)]
 ):
-    """Record a BUY or SELL in a portfolio.
+    """Record a BUY or SELL in a portfolio. Returns 201 with the transaction.
 
     The ticker is uppercased and must have a price on Yahoo Finance. The
     date is optional (defaults to now) and can be in the past; a backdated

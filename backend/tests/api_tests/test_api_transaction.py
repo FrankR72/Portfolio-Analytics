@@ -9,7 +9,6 @@ Access by another user (404) and requests without a token (401) are in
 test_api_security.py.
 
 Tests that pin known issues (update them when those are fixed):
-    - Creating a transaction returns 200 (it should be 201).
     - The list is ordered by id, so a backdated transaction comes last.
 """
 
@@ -41,7 +40,7 @@ def sell(symbol="AAPL", qty=10, price=100.0, day=None) -> dict:
 # POST /api/transactions
 # ---------------------------------------------------------------------------
 
-# 200 (see the module docstring) with the stored transaction. The symbol is
+# 201 with the stored transaction. The symbol is
 # stripped and uppercased before the ticker check, total_value is
 # 10 * 100.5 = 1005, and a given date is stored as midnight UTC.
 async def test_create_transaction(client, owner, portfolio, ticker_validation, count_transactions):
@@ -52,7 +51,7 @@ async def test_create_transaction(client, owner, portfolio, ticker_validation, c
         headers=owner.headers,
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 201
     body = response.json()
     assert set(body) == {
         "id", "symbol", "transaction_type", "quantity_actions", "price",
@@ -73,7 +72,7 @@ async def test_create_transaction_without_date(client, owner, portfolio, ticker_
         "/api/transactions", params={"portfolio_id": portfolio["id"]}, json=buy(), headers=owner.headers
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 201
     assert response.json()["transaction_date"].startswith(datetime.now(UTC).date().isoformat())
 
 
@@ -88,7 +87,7 @@ async def test_create_covered_sell(client, owner, portfolio, add_tx, ticker_vali
         headers=owner.headers,
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 201
 
 
 # Selling more than is held, or selling before the shares were bought

@@ -55,7 +55,7 @@ with col2:
                 start_session(login_response.json()["access_token"])
                 st.switch_page(PORTFOLIO_PAGE)
             st.success("User created successfully! Please log in.")
-        elif response.status_code == 406:
+        elif response.status_code == 409:
             st.error("Username already exists.")
         elif response.status_code == 400:
             st.error("Email already registered.")

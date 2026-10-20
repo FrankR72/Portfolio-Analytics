@@ -5,7 +5,6 @@ CRUD for the user's portfolios, plus the analytics used by the charts page
 summary (ai/portfolio_summary.py).
 
 Known issues (pending refactor):
-    - A duplicate name returns 406 on create but 409 on rename.
     - /distribution and /unrealized_gains_distribution don't catch the
       ValueError that AnalyticService raises when a price lookup fails, so
       it becomes a 500.
@@ -69,7 +68,7 @@ async def create_portfolio_endpoint(
 ):
     """Create a portfolio. Returns 201.
 
-    Errors: 406 if you already have a portfolio with that name
+    Errors: 409 if you already have a portfolio with that name
     (case-insensitive).
     """
     return await service.create_portfolio(portfolio, user.id)

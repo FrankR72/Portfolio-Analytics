@@ -1,8 +1,4 @@
-"""User routes, mounted at /api/users. Only sign-up for now.
-
-Known issues (pending refactor):
-    A duplicate username returns 406 instead of 409.
-"""
+"""User routes, mounted at /api/users. Only sign-up for now."""
 
 from fastapi import APIRouter, Depends
 from fastapi import status
@@ -41,7 +37,7 @@ async def create_user_endpoint(
     The password must be at least 8 characters; it is stored hashed.
     Returns 201 with the created user.
 
-    Errors: 406 if the username is taken, 400 if the email is already
+    Errors: 409 if the username is taken, 400 if the email is already
     registered (both case-insensitive), 422 if the body is invalid.
     """
     return await service.create_user(user)
