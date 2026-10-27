@@ -96,9 +96,8 @@ def get_historical_stock_prices(symbol, start_date, end_date):
         removed). Days without trading are missing, not filled.
 
     Raises:
-        ValueError: If there is no data, or if a stock split happened in the
-            window, because user-entered prices are not split-adjusted and
-            the returns would be wrong.
+        ValueError: If there is no data (empty ticker, unknown symbol, no
+            trading days in the range or a yfinance/network error).
     """
     symbol = symbol.strip().upper()
 

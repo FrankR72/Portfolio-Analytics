@@ -147,8 +147,8 @@ class AnalyticService:
             Raises:
                 HTTPException: 404 if the portfolio isn't the user's.
                 ValueError: The /performance route turns it into 422. Raised
-                    for an invalid date range, a stock split or missing
-                    price in the window, a negative share count, a first
+                    for an invalid date range, a missing price in the
+                    window, a negative share count, a first
                     day without a positive net investment, or a period where
                     the portfolio is emptied and restarted.
             """
@@ -169,8 +169,8 @@ class AnalyticService:
 
         Each stock's series uses the same method and format as
         get_portfolio_performance, computed from that symbol's transactions
-        only. A stock whose return can't be computed (for example a split,
-        missing prices, or a position closed and reopened in the window)
+        only. A stock whose return can't be computed (for example missing
+        prices, or a position closed and reopened in the window)
         goes to "errors" and doesn't block the others. Stocks with no shares
         at any point in the window are left out.
 

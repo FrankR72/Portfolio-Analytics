@@ -182,11 +182,11 @@ async def test_summary_never_sends_the_portfolio_name(
 async def test_summary_without_performance_when_it_fails(
     service, session, owner, portfolio, current_price, performance, fake_llm,
 ):
-    # get_portfolio_performance raises ValueError (e.g. a stock split): the
+    # get_portfolio_performance raises ValueError (e.g. a missing price): the
     # summary still goes ahead, just without the "performance" section.
     await add_tx(session, portfolio, "AAPL", "BUY", 10, 100, "2026-01-05")
     current_price.return_value = 150
-    performance.side_effect = ValueError("Stock split in the period")
+    performance.side_effect = ValueError("Missing price in the period")
 
     text = await service.summarize(owner.id, portfolio.id)
 

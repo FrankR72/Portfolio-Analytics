@@ -69,7 +69,7 @@ LLM_API_KEY=sk-or-...
 | **`POST`, not `GET`.** | Every call creates new text and uses quota; a GET may be repeated or prefetched. | — |
 | **Ownership checked before the configuration.** | Otherwise an unconfigured app (CI) would answer 503 instead of 404 for another user's portfolio, revealing that it exists. | — |
 | **Empty portfolio → fixed text, no model call.** | Nothing to explain; saves quota and is deterministic. | Letting the model say "no data". |
-| **Performance is optional.** | `get_portfolio_performance` deliberately raises on stock splits or missing prices; the summary goes ahead without the return instead of failing. | Failing the whole summary. |
+| **Performance is optional.** | `get_portfolio_performance` deliberately raises on missing prices (and other cases it can't compute); the summary goes ahead without the return instead of failing. | Failing the whole summary. |
 | **Generic 503 message to the client.** | Provider errors can contain account details (OpenRouter's include a `user_id`); the real cause goes to the request log. | Passing the provider message through. |
 | **Frontend timeout 150 s.** | Longer than the backend's worst case (price lookups + two 60 s attempts), so the clean 503 arrives first. | The 5–60 s used by other components. |
 

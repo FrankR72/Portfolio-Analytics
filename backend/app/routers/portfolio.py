@@ -176,7 +176,7 @@ async def get_portfolio_performance_endpoint(
 
     Errors: 404 if the portfolio doesn't exist or isn't yours, 422 if the
     dates are invalid or the return can't be computed for the period (for
-    example a stock split in the window, or missing prices).
+    example missing prices).
     """
     # AnalyticService raises ValueError instead of HTTPException.
     try:

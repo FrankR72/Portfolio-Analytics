@@ -404,9 +404,9 @@ async def test_performance_invalid_range_returns_422(client, owner, portfolio, s
     assert response.json()["detail"] == "Use start <= end, with end no later than today"
 
 
-# A stock split in the window (or any other ValueError while computing
-# the series) is also a 422 with the message.
-async def test_performance_split_returns_422(client, owner, portfolio, add_tx, historical_prices):
+# A failed price lookup in the window (or any other ValueError while
+# computing the series) is also a 422 with the message.
+async def test_performance_price_error_returns_422(client, owner, portfolio, add_tx, historical_prices):
     await add_tx(portfolio, "AAPL", "BUY", 10, 100.0, "2026-01-05")
     historical_prices.side_effect = ValueError("Could not verify a usable price for AAPL")
 
