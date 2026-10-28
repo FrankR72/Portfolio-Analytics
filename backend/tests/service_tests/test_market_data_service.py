@@ -7,12 +7,22 @@ Every function in the module wraps its errors in a generic ValueError
 ("Could not verify a usable price for ...") raised `from` the original
 error. The specific reason is therefore checked on `error.value.__cause__`,
 not on the ValueError itself.
+
+Most tests run with the price cache off (conftest sets REDIS_URL to ""). The
+"Price cache" section turns it on with a fakeredis client (`fake_redis`) to
+check how the functions use it: a hit skips yfinance, a miss saves the
+result, failures are never saved, and Redis being down doesn't break a
+lookup. The cache itself is tested in test_price_cache.py.
 """
 
+from datetime import date
+
+import fakeredis
 import pytest
 
 import pandas as pd
 
+from services import price_cache
 from services.market_data_service import (
     get_current_stock_price,
     get_historical_stock_prices,
@@ -33,6 +43,24 @@ def history(mocker):
     fake_stock = mocker.patch("services.market_data_service.yf.Ticker").return_value
     fake_history = fake_stock.history
     return fake_history
+
+
+@pytest.fixture
+def fake_redis(monkeypatch):
+    """Turn the price cache on with an empty fakeredis client."""
+    client = fakeredis.FakeRedis(decode_responses=True)
+    monkeypatch.setattr(price_cache, "redis_client", client)
+    return client
+
+
+@pytest.fixture
+def redis_down(monkeypatch):
+    """Price cache on, but every Redis command raises ConnectionError."""
+    server = fakeredis.FakeServer()
+    server.connected = False
+    monkeypatch.setattr(
+        price_cache, "redis_client", fakeredis.FakeRedis(server=server, decode_responses=True)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -132,3 +160,108 @@ def test_ticker_validation_true_for_usable_price(history):
 def test_ticker_validation_false_when_lookup_fails(history):
     history.return_value = pd.DataFrame()
     assert ticker_validation("AAPL") is False
+
+
+# ---------------------------------------------------------------------------
+# Price cache
+# ---------------------------------------------------------------------------
+
+START = date(2024, 1, 2)
+END = date(2024, 1, 5)
+HISTORY_KEY = "prices:v1:historical:AAPL:2024-01-02:2024-01-05"
+
+
+# Miss: yfinance is called once and the price is saved under the
+# normalized symbol, for the 300 s TTL.
+def test_current_price_miss_fetches_and_saves(history, fake_redis):
+    history.return_value = pd.DataFrame({"Close": [101.0, 105.0]})
+
+    assert get_current_stock_price(" aapl ") == 105.0
+    assert history.call_count == 1
+    assert fake_redis.get("prices:v1:current:AAPL") == "105.0"
+    assert fake_redis.ttl("prices:v1:current:AAPL") == 300
+
+
+# Hit: the cached price is returned and yfinance isn't called at all.
+def test_current_price_hit_skips_yfinance(history, fake_redis):
+    fake_redis.set("prices:v1:current:AAPL", 150.0)
+
+    assert get_current_stock_price("aapl") == 150.0
+    history.assert_not_called()
+
+
+# Two lookups in a row: only the first one reaches yfinance.
+def test_current_price_second_lookup_is_cached(history, fake_redis):
+    history.return_value = pd.DataFrame({"Close": [105.0]})
+
+    get_current_stock_price("AAPL")
+    get_current_stock_price("AAPL")
+
+    assert history.call_count == 1
+
+
+# A failed lookup raises as before and nothing is saved, so the next
+# request tries yfinance again.
+def test_current_price_failure_is_not_cached(history, fake_redis):
+    history.return_value = pd.DataFrame({"Close": [0.0]})
+
+    with pytest.raises(ValueError):
+        get_current_stock_price("AAPL")
+    assert fake_redis.keys("*") == []
+
+
+# ticker_validation goes through the same cache: a cached price is True
+# without a network call.
+def test_ticker_validation_uses_cache(history, fake_redis):
+    fake_redis.set("prices:v1:current:AAPL", 150.0)
+
+    assert ticker_validation("AAPL") is True
+    history.assert_not_called()
+
+
+# Miss: the history is fetched once and saved for the 3600 s TTL.
+def test_historical_prices_miss_fetches_and_saves(history, fake_redis):
+    history.return_value = pd.DataFrame(
+        {"Close": [100.0, 101.5, 99.0]}, index=pd.date_range("2024-01-02", periods=3)
+    )
+
+    result = get_historical_stock_prices("aapl", START, END)
+
+    assert result.tolist() == [100.0, 101.5, 99.0]
+    assert history.call_count == 1
+    assert fake_redis.ttl(HISTORY_KEY) == 3600
+
+
+# Second lookup of the same range: from the cache, same dates and values,
+# no second yfinance call.
+def test_historical_prices_second_lookup_is_cached(history, fake_redis):
+    history.return_value = pd.DataFrame(
+        {"Close": [100.0, 101.5, 99.0]}, index=pd.date_range("2024-01-02", periods=3)
+    )
+
+    first = get_historical_stock_prices("AAPL", START, END)
+    second = get_historical_stock_prices("AAPL", START, END)
+
+    assert history.call_count == 1
+    assert second.tolist() == first.tolist()
+    assert list(second.index) == list(first.index)
+
+
+# An empty history raises as before and nothing is saved.
+def test_historical_prices_failure_is_not_cached(history, fake_redis):
+    history.return_value = pd.DataFrame()
+
+    with pytest.raises(ValueError):
+        get_historical_stock_prices("AAPL", START, END)
+    assert fake_redis.keys("*") == []
+
+
+# Redis down: both functions still return yfinance's prices instead of
+# failing (the cache errors become misses inside price_cache).
+def test_redis_down_falls_back_to_yfinance(history, redis_down):
+    history.return_value = pd.DataFrame(
+        {"Close": [100.0, 105.0]}, index=pd.date_range("2024-01-02", periods=2)
+    )
+
+    assert get_current_stock_price("AAPL") == 105.0
+    assert get_historical_stock_prices("AAPL", START, END).tolist() == [100.0, 105.0]
