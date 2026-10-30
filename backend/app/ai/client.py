@@ -6,7 +6,7 @@ or model is a change to app/.env, not to code.
 
 Every failure (not configured, network error, timeout, rate limit, bad key,
 empty answer) is raised as LLMUnavailableError, so callers handle one error
-type and the API can turn it into a single 503.
+type and the API can turn it into a single 503 .
 """
 
 import time
