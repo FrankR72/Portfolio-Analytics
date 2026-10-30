@@ -35,10 +35,18 @@ What the numbers mean
   future (asyncio.gather), their durations add up to more than the time that
   actually passed, and the sum must no longer be read as a percentage.
 
-Run from Portfolio-Analytics/ with Postgres started:
+The price cache is whatever REDIS_URL in app/.env says. To compare, empty
+Redis first (redis-cli -p 6380 FLUSHDB) so round 1 starts cold, and turn the
+cache off for a run with an empty REDIS_URL (an environment variable wins
+over app/.env). Each results file records "price_cache": "on", "off" (no
+REDIS_URL) or "down" (REDIS_URL set but Redis not answering, so every lookup
+goes to yfinance).
+
+Run from Portfolio-Analytics/ with Postgres (and Redis) started:
 
     uv run python backend/benchmarks/measure_price_calls.py --list
-    uv run python backend/benchmarks/measure_price_calls.py --portfolio-id 1 --label baseline
+    uv run python backend/benchmarks/measure_price_calls.py --portfolio-id 1 --label redis
+    REDIS_URL= uv run python backend/benchmarks/measure_price_calls.py --portfolio-id 1 --label baseline
 
 Results are saved to backend/benchmarks/results/<timestamp>_<label>.json.
 They hold timings and counts only: no symbols, names or ids.
@@ -55,6 +63,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 import pandas as pd
+import redis
 
 BACKEND = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND / "app"))
@@ -66,6 +75,7 @@ from ai import request_log
 from ai.client import LLMResult
 from core.config import settings
 from db.database import AsyncSessionLocal, engine
+from db.redis_client import redis_client
 from main import app
 from models import models
 from routers.auth import get_current_user
@@ -238,6 +248,21 @@ async def fake_generate_text(system_prompt: str, user_prompt: str) -> LLMResult:
     return LLMResult(text="(benchmark)", model="benchmark", latency_seconds=0.0)
 
 
+def price_cache_state() -> str:
+    """"on", "off" (no REDIS_URL) or "down" (Redis configured but not answering).
+
+    "down" matters because the app then quietly falls back to yfinance: the
+    run would look like a no-cache run while labelled as a cache run.
+    """
+    if redis_client is None:
+        return "off"
+    try:
+        redis_client.ping()
+    except redis.RedisError:
+        return "down"
+    return "on"
+
+
 # ---------------------------------------------------------------------------
 # Report
 # ---------------------------------------------------------------------------
@@ -299,6 +324,8 @@ async def main() -> None:
             raise SystemExit("Pass --portfolio-id (see --list).")
 
         user, symbols = await load_portfolio(args.portfolio_id)
+        price_cache = price_cache_state()
+        print(f"price cache: {price_cache}")
 
         # Changes made only inside this process; nothing is written to .env
         # or the database.
@@ -332,6 +359,7 @@ async def main() -> None:
     path.write_text(json.dumps({
         "created_at": datetime.now().isoformat(timespec="seconds"),
         "label": args.label,
+        "price_cache": price_cache,
         "symbols_in_portfolio": len(symbols),
         "analytics_period": "3M",
         "rounds": rounds,

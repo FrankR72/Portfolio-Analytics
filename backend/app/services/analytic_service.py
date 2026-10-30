@@ -63,9 +63,7 @@ class AnalyticService:
                 continue
             
             current_price = await asyncio.to_thread(get_current_stock_price, symbol)
-            # Known issue: never true, the call above raises instead.
-            if current_price is None:
-                raise ValueError(f"No current price available for {symbol}")
+
             current_value = shares * current_price
             total_portfolio_value += current_value
             holdings_distribution[symbol] = {
@@ -105,9 +103,7 @@ class AnalyticService:
                 continue
             
             current_price =  await asyncio.to_thread(get_current_stock_price, symbol)
-            # Known issue: never true, the call above raises instead.
-            if current_price is None:
-                raise ValueError(f"No current price available for {symbol}")
+
             current_value = shares * current_price
             unrealized_gain_loss = current_value - data["cost_bases"]
             holdings_unrealized_gains_distribution[symbol] = {
