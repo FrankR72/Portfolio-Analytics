@@ -9,8 +9,15 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8"
     )
     
-    database_url: str
+    database_url: str #postgresql
+    
+    # Optional: with no REDIS_URL the price cache is off and every lookup
+    # goes to yfinance, as before (CI and the tests run this way).
+    redis_url: str | None = None
+    ttl_price_cache_current_prices_seconds: int = 60 * 5 # 5 minutes
+    ttl_price_cache_historical_prices_seconds: int = 60 * 60 # 1 hour
         
+       
     secret_key: SecretStr
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30

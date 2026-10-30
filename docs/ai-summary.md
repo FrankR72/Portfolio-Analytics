@@ -69,7 +69,7 @@ LLM_API_KEY=sk-or-...
 | **`POST`, not `GET`.** | Every call creates new text and uses quota; a GET may be repeated or prefetched. | — |
 | **Ownership checked before the configuration.** | Otherwise an unconfigured app (CI) would answer 503 instead of 404 for another user's portfolio, revealing that it exists. | — |
 | **Empty portfolio → fixed text, no model call.** | Nothing to explain; saves quota and is deterministic. | Letting the model say "no data". |
-| **Performance is optional.** | `get_portfolio_performance` deliberately raises on stock splits or missing prices; the summary goes ahead without the return instead of failing. | Failing the whole summary. |
+| **Performance is optional.** | `get_portfolio_performance` deliberately raises on missing prices (and other cases it can't compute); the summary goes ahead without the return instead of failing. | Failing the whole summary. |
 | **Generic 503 message to the client.** | Provider errors can contain account details (OpenRouter's include a `user_id`); the real cause goes to the request log. | Passing the provider message through. |
 | **Frontend timeout 150 s.** | Longer than the backend's worst case (price lookups + two 60 s attempts), so the clean 503 arrives first. | The 5–60 s used by other components. |
 
@@ -135,7 +135,7 @@ In every run: Spanish 100%, no advice 100%, no currency 100%, missing prices exp
 
 - **Free models are unreliable.** 429 (rate-limited upstream) and 502 happen; the user sees "try again later". There is no automatic fallback yet.
 - **The model still slips sometimes.** Spanish number format in ~1 of 11 answers, comments about missing data ("no se proporciona…") in 4–6 of 11.
-- **Total wait is dominated by price lookups**, not the model: no price cache yet (see the "Cache market prices" TODO).
+- **Price lookups add to the wait when the price cache is cold.** Since 2026-10-28 prices are cached in Redis ([caching.md](caching.md)): the summary's 12 price lookups (~0.8 s) take ~0.1 s when the Holdings or Analytics tab already fetched them, so the wait is now mostly the model.
 - **The checks are text heuristics.** They can't tell whether a correct number is attached to the right concept, or judge tone.
 - **Privacy:** some free providers may log prompts. The snapshot contains only symbols and numbers, which is acceptable for this project but worth revisiting before real users.
 
@@ -143,7 +143,6 @@ In every run: Spanish 100%, no advice 100%, no currency 100%, missing prices exp
 
 - **Fallback model.** Try `nemotron-3.5-super-vl` when the main model fails, for example with OpenRouter's native `models: [main, fallback]` routing plus an `LLM_FALLBACK_MODELS` setting. `LLMResult.model` already records which one answered.
 - **`summary_v3`** (not planned for now): describe the number format only positively, keep v1's length wording, keep v2's "don't comment on missing data" rule.
-- **Price cache** (existing TODO): the biggest latency gain for the summary.
 - **User feedback:** thumbs up/down under the summary (`st.feedback` + a table) to measure quality with real users.
 - **LLM-as-judge** in the evals, to catch numbers attached to the wrong concept and to score tone.
 - **Streaming** the answer word by word, if the wait becomes a problem.

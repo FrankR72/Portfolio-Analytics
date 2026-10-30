@@ -83,7 +83,7 @@ class PortfolioSnapshot(BaseModel):
     total_unrealized_return: str | None
     realized: list[RealizedSnapshot]
     total_realized_gain: str | None
-    # None when the return couldn't be calculated (no data, stock split...).
+    # None when the return couldn't be calculated (no data, missing price...).
     performance: PerformanceSnapshot | None
 
 

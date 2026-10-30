@@ -96,7 +96,7 @@ class PortfolioSummaryService:
         """Return over the last PERFORMANCE_DAYS, or None if it can't be calculated.
 
         get_portfolio_performance raises ValueError on purpose in several
-        cases (a stock split in the period, a missing price, ...). The
+        cases (a missing price, a first day without net investment, ...). The
         return is one part of the summary, so the summary goes ahead
         without it instead of failing.
         """

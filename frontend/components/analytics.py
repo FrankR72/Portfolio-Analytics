@@ -1,4 +1,4 @@
-"""Analytics tab: return curve, allocation and unrealized-gains charts."""
+"""Analytics tab: return/value curve, allocation and unrealized-gains charts."""
 
 from datetime import date, datetime, timedelta
 import math
@@ -83,12 +83,22 @@ def period_start_date(portfolio_id, period, end_date):
 
 @st.fragment
 def show_portfolio_history(portfolio_id):
-    st.subheader("Rendimiento del portafolio")
+    """Portfolio history chart, as a return curve or as the money the
+    positions are worth each day (both come in the same /performance
+    response, so switching views doesn't refetch)."""
+    title = st.empty()
     period = st.segmented_control(
         "Periodo", PERIODS,
         default="3M", required=True, key=f"return_period_{portfolio_id}",
         label_visibility="collapsed",
     )
+    view = st.segmented_control(
+        "Vista", ["Rendimiento", "Valor"],
+        default="Rendimiento", required=True, key=f"history_view_{portfolio_id}",
+        label_visibility="collapsed",
+    )
+    show_value = view == "Valor"
+    title.subheader("Valor del portafolio" if show_value else "Rendimiento del portafolio")
     end_date = date.today()
 
     try:
@@ -110,10 +120,16 @@ def show_portfolio_history(portfolio_id):
         if not points:
             st.info("No hay historial disponible para este periodo.")
             return
-        history = pd.DataFrame(points)[["date", "return_percentage"]]
+        history = pd.DataFrame(points)[["date", "return_percentage", "holdings_value"]]
         history["date"] = pd.to_datetime(history["date"], errors="raise")
         history["return_percentage"] = pd.to_numeric(history["return_percentage"], errors="raise")
-        if history["date"].isna().any() or history["date"].duplicated().any() or not history["return_percentage"].map(math.isfinite).all():
+        history["holdings_value"] = pd.to_numeric(history["holdings_value"], errors="raise")
+        if (
+            history["date"].isna().any()
+            or history["date"].duplicated().any()
+            or not history["return_percentage"].map(math.isfinite).all()
+            or not history["holdings_value"].map(math.isfinite).all()
+        ):
             raise ValueError("Historial invalido.")
         history = history.sort_values("date")
     except requests.RequestException:
@@ -129,7 +145,15 @@ def show_portfolio_history(portfolio_id):
     limited = history.iloc[0]["date"].date() > start_date
     period_label = "Desde la primera inversion" if limited or period == "All" else f"Rendimiento {period}"
     headline = st.empty()
-    st.caption(f"{history.iloc[0]['day']} - {last['day']} | Rendimiento aproximado de las posiciones")
+    if show_value:
+        # holdings_value is shares held x that day's close. There is no cash
+        # balance, so a sale lowers the line by the amount sold.
+        st.caption(
+            f"{history.iloc[0]['day']} - {last['day']} | Valor de las acciones en cartera al cierre de cada dia: "
+            "lo invertido mas lo ganado o perdido. Al vender, el valor baja (el efectivo de la venta no se cuenta)."
+        )
+    else:
+        st.caption(f"{history.iloc[0]['day']} - {last['day']} | Rendimiento aproximado de las posiciones")
     if limited:
         st.caption(f"Periodo solicitado: {period}. Historial disponible desde la primera inversion: {history.iloc[0]['day']}.")
     if payload.get("provisional"):
@@ -146,23 +170,33 @@ def show_portfolio_history(portfolio_id):
         name="selected_day", fields=["day"], nearest=True,
         on="click", clear="dblclick", empty=False,
     )
+    if show_value:
+        # zero=False: start the axis near the values, so their changes show.
+        y = alt.Y("holdings_value:Q", title="Valor", scale=alt.Scale(zero=False), axis=alt.Axis(format=",.0f"))
+        value_tooltip = alt.Tooltip("holdings_value:Q", title="Valor", format=",.2f")
+    else:
+        y = alt.Y("return_ratio:Q", title="Rendimiento", axis=alt.Axis(format=".1%"))
+        value_tooltip = alt.Tooltip("return_ratio:Q", title="Rendimiento", format="+.2%")
     base = alt.Chart(history).encode(
         x=alt.X("date:T", title=None),
-        y=alt.Y("return_ratio:Q", title="Rendimiento", axis=alt.Axis(format=".1%")),
-        tooltip=[alt.Tooltip("day:N", title="Fecha"), alt.Tooltip("return_ratio:Q", title="Rendimiento", format="+.2%")],
+        y=y,
+        tooltip=[alt.Tooltip("day:N", title="Fecha"), value_tooltip],
     )
     line = base.mark_line(color=color, strokeWidth=2, point=len(history) == 1)
     targets = base.mark_point(size=65, color=color).encode(
         opacity=alt.condition(selection, alt.value(1), alt.value(0)),
     ).add_params(selection)
-    zero = alt.Chart(pd.DataFrame({"zero": [0]})).mark_rule(
-        color="#999999", strokeDash=[4, 4],
-    ).encode(y="zero:Q")
-    chart = (zero + line + targets).properties(height=340)
+    if show_value:
+        chart = line + targets
+    else:
+        zero = alt.Chart(pd.DataFrame({"zero": [0]})).mark_rule(
+            color="#999999", strokeDash=[4, 4],
+        ).encode(y="zero:Q")
+        chart = zero + line + targets
     event = st.altair_chart(
-        chart, width="stretch", on_select="rerun",
+        chart.properties(height=340), width="stretch", on_select="rerun",
         selection_mode="selected_day",
-        key=f"return_chart_{portfolio_id}_{period}_{start_date}_{end_date}",
+        key=f"return_chart_{portfolio_id}_{view}_{period}_{start_date}_{end_date}",
     )
     selected = event.selection.get("selected_day", [])
     displayed = last
@@ -172,11 +206,18 @@ def show_portfolio_history(portfolio_id):
             displayed = matched.iloc[0]
     with headline.container():
         selected_column, period_column = st.columns(2)
-        selected_column.metric(
-            f"Rendimiento al {displayed['day']}",
-            f"{displayed['return_percentage']:+.2f}%",
-        )
-        period_column.metric(period_label, f"{last['return_percentage']:+.2f}%")
+        if show_value:
+            selected_column.metric(
+                f"Valor al {displayed['day']}",
+                f"{displayed['holdings_value']:,.2f}",
+            )
+            period_column.metric("Valor actual", f"{last['holdings_value']:,.2f}")
+        else:
+            selected_column.metric(
+                f"Rendimiento al {displayed['day']}",
+                f"{displayed['return_percentage']:+.2f}%",
+            )
+            period_column.metric(period_label, f"{last['return_percentage']:+.2f}%")
 
 
 @st.fragment

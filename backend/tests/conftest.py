@@ -13,3 +13,9 @@ import os
 # SQLite engine.
 os.environ.setdefault("SECRET_KEY", "test-secret-key-at-least-32-bytes-long")
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+
+# Empty REDIS_URL turns the price cache off (redis_client is None), so local
+# runs never read or write the real Redis from app/.env: the tests would
+# otherwise store their fake prices there and read each other's. The cache
+# tests put in a fakeredis client themselves.
+os.environ.setdefault("REDIS_URL", "")

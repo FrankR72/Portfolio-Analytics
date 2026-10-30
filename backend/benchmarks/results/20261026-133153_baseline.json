@@ -1,0 +1,86 @@
+{
+  "created_at": "2026-10-26T13:31:53",
+  "label": "baseline",
+  "symbols_in_portfolio": 6,
+  "analytics_period": "3M",
+  "rounds": [
+    [
+      {
+        "screen": "Holdings tab",
+        "seconds": 1.43,
+        "yfinance_calls": 6,
+        "yfinance_seconds": 1.37,
+        "statuses": [
+          200
+        ]
+      },
+      {
+        "screen": "Analytics tab",
+        "seconds": 2.62,
+        "yfinance_calls": 24,
+        "yfinance_seconds": 2.48,
+        "statuses": [
+          200,
+          200,
+          200,
+          200
+        ]
+      },
+      {
+        "screen": "AI summary (prices only)",
+        "seconds": 0.77,
+        "yfinance_calls": 12,
+        "yfinance_seconds": 0.69,
+        "statuses": [
+          200
+        ]
+      },
+      {
+        "screen": "Add a transaction (ticker check)",
+        "seconds": 0.05,
+        "yfinance_calls": 1,
+        "yfinance_seconds": 0.05,
+        "statuses": []
+      }
+    ],
+    [
+      {
+        "screen": "Holdings tab",
+        "seconds": 0.32,
+        "yfinance_calls": 6,
+        "yfinance_seconds": 0.3,
+        "statuses": [
+          200
+        ]
+      },
+      {
+        "screen": "Analytics tab",
+        "seconds": 1.46,
+        "yfinance_calls": 24,
+        "yfinance_seconds": 1.31,
+        "statuses": [
+          200,
+          200,
+          200,
+          200
+        ]
+      },
+      {
+        "screen": "AI summary (prices only)",
+        "seconds": 0.84,
+        "yfinance_calls": 12,
+        "yfinance_seconds": 0.74,
+        "statuses": [
+          200
+        ]
+      },
+      {
+        "screen": "Add a transaction (ticker check)",
+        "seconds": 0.05,
+        "yfinance_calls": 1,
+        "yfinance_seconds": 0.05,
+        "statuses": []
+      }
+    ]
+  ]
+}

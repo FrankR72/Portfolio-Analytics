@@ -6,13 +6,16 @@ from db.database import engine
 
 from routers import user, auth, portfolio, transaction, holding
 
+from db.redis_client import redis_client
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     yield
     # Shutdown code
-    await engine.dispose()  # Dispose of the engine when the app shuts down
+    await engine.dispose() 
+    if redis_client is not None:
+        redis_client.close()
     
 
 app = FastAPI(lifespan=lifespan)
