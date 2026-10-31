@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     # doesn't need it. Sent as OpenRouter's `reasoning` option; set False
     # for a provider that rejects unknown options.
     llm_disable_reasoning: bool = True
+    
+    
+    # SEC
+    sec_user_agent: str | None = None
 
     @property
     def llm_configured(self) -> bool:

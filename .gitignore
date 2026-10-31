@@ -30,3 +30,5 @@ CLAUDE.md
 *.db
 # LLM request logs (ai/request_log.py)
 backend/logs/
+# Downloaded SEC filings (ai/rag/ingest_data.py)
+backend/data/
