@@ -16,6 +16,7 @@ dependencies = [
     "pydantic-settings>=2.14.2",
     "pyjwt>=2.13.0",
     "redis>=8.1.0",
+    "sec2md>=0.1.25",
     "sqlalchemy>=2.0.51",
     "streamlit>=1.60.0",
     "yfinance>=1.7.0",
