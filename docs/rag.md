@@ -223,6 +223,18 @@ One JSON line per question in `backend/logs/research_traces.jsonl` (gitignored).
 - **API tests:** 200, 401, 404 (ticker not in your holdings), 422 with a `code`, 503. The new route goes into `ROUTES` in `test_api_security.py`.
 - **Never call the outside world:** EDGAR and embedding calls are blocked in tests, like `block_llm`.
 
+### Phase 0 notes: parsing and chunking (2026-11-02)
+
+Experiment scripts in `backend/app/ai/rag/` (run with `uv run python -m ai.rag.<name>` from `backend/app/`): `ingest_data.py` (download + `metadata.json`), `parse_document.py` (HTML → `.md`, to read), `chunking.py` (chunks → `chunks_preview.jsonl` next to the HTML). They're SEC-specific, so they move to `research/` once the approach is settled.
+
+- **Parser: `sec2md`** (0.1.25). `extract_sections` found all 23 Items of MSFT's 10-K, split inside pages, with the cover and table of contents left out.
+- **Chunking is structure-aware, not fixed-size,** and uses neither LangChain nor `sec2md.chunk_section` (which cuts every ~512 tokens with overlap). A chunk is one heading with its paragraphs and whole tables, within one Item. The heading path goes in the header: `MSFT | Form 10-K | Fiscal year ended 2026-06-30 | Item 1A: Risk Factors > STRATEGIC AND COMPETITIVE RISKS > Business model competition`.
+- **Headings are found from styling**, because sec2md only marks `<h1>`–`<h6>`, and MSFT's HTML has none. The levels are: ALL-CAPS line; whole-line `***x***`; `**x**` or `*x*`; and a bold lead-in sentence (how Item 1A titles each risk factor). The styling survives only in sec2md's *elements*: `page.content` drops the bold. Page furniture (`PART I` running headers, page numbers) is removed. These rules were tuned on MSFT only.
+- **Token limit only as a fallback:** a unit over 800 tokens is split into parts of about 512, with whole blocks and no overlap. Tables are never split.
+- **Kept apart per chunk:** `content`, `embedding_text` (header + content), and `metadata` (Item, heading path, pages, display pages, tokens, `has_table`, sec2md element ids for citations, XBRL tags).
+- **First result (MSFT FY2026 10-K):** 257 chunks, median 214 tokens, p90 552, max 1,142 (a single table). Item 1A has 40 chunks, Item 7 has 45, Item 8 has 97.
+- **To compare next:** merging tiny units (29 are under 50 tokens), overlap in fallback parts, `chunk_section` 512/128 as the fixed-size baseline, and XBRL TextBlocks as the unit for Item 8 notes.
+
 ---
 
 ## 10. Risks
