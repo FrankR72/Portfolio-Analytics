@@ -18,8 +18,8 @@ from datetime import datetime
 
 
 # backend/data/edgar/.
-EDGAR_DIR = Path(__file__).resolve().parents[3] / "data" / "edgar"
-CHROMADB_DIR = Path(__file__).resolve().parents[3] / "data" / "chromadb"
+EDGAR_DIR = Path(__file__).resolve().parents[4] / "data" / "edgar"
+CHROMADB_DIR = Path(__file__).resolve().parents[4] / "data" / "chromadb"
 
 MODEL = "liquid/lfm-2.5-embedding-350m:free"
 

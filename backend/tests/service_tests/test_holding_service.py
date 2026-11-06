@@ -2,9 +2,10 @@
 
 Two kinds of tests, depending on what each method does:
 
-- get_portfolio_transactions and summarize_holdings run queries (ownership
-  check, ordering by date then id), so they use a real database: a fresh
-  in-memory SQLite per test, like test_user_service.py.
+- get_portfolio_transactions, summarize_holdings and get_all_traded_symbols
+  run queries (ownership check, ordering by date then id, distinct symbols),
+  so they use a real database: a fresh in-memory SQLite per test, like
+  test_user_service.py.
 - build_holdings_dictionary and enrich_holdings_with_current_prices are pure
   logic, so they get plain fake transactions built with `tx()` and holding
   dicts built with `holding()`, and never touch the database.
@@ -396,3 +397,27 @@ async def test_summary_of_another_users_portfolio_is_404(service, stranger, port
         await service.summarize_holdings(portfolio.id, stranger.id)
 
     assert error.value.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# get_all_traded_symbols
+# ---------------------------------------------------------------------------
+
+# Covers every user: a symbol traded by two users comes back once, and a
+# fully sold symbol is still included. The query has no order, so the result
+# is sorted before comparing.
+async def test_all_traded_symbols_of_every_user(service, session, stranger, portfolio):
+    other_portfolio = models.Portfolio(name="Other", user_id=stranger.id)
+    session.add(other_portfolio)
+    await session.commit()
+    await add_tx(session, portfolio, "A", "BUY", 10, 40.0, "2026-01-05")
+    await add_tx(session, portfolio, "B", "BUY", 5, 20.0, "2026-01-05")
+    await add_tx(session, portfolio, "B", "SELL", 5, 25.0, "2026-01-06")
+    await add_tx(session, other_portfolio, "A", "BUY", 1, 40.0, "2026-01-05")
+    await add_tx(session, other_portfolio, "C", "BUY", 2, 30.0, "2026-01-05")
+
+    assert sorted(await service.get_all_traded_symbols()) == ["A", "B", "C"]
+
+
+async def test_all_traded_symbols_of_no_transactions(service):
+    assert await service.get_all_traded_symbols() == []

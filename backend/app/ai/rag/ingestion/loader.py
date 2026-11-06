@@ -8,25 +8,20 @@ is only downloaded once: if its document is already on disk it's skipped.
 
 The SEC requires every request to carry a User-Agent with a name and an
 email, and allows at most 10 requests per second. The User-Agent comes
-from SEC_USER_AGENT in app/.env. Run as a module from backend/app/:
+from SEC_USER_AGENT in app/.env. It's run through rag_orchestrator.py,
+which passes the tickers.
 
-    uv run python -m ai.rag.ingest_data
-
-Note: for now this only works with one document, Microsoft's (MSFT)
-latest 10-K. It doesn't go through the users' holdings yet; that comes
-once the pipeline works for this single filing.
+Note: for now this only downloads the latest 10-K of each ticker.
 """
 import json
 import os
 import time
 from pathlib import Path
-
 from core.config import settings
-
 import httpx
 
 # backend/data/edgar/.
-SAVE_DIR = Path(__file__).resolve().parents[3] / "data" / "edgar"
+SAVE_DIR = Path(__file__).resolve().parents[4] / "data" / "edgar"
 
 SEC_TICKER_CIK_URL = "https://www.sec.gov/files/company_tickers.json"
 SEC_SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik}.json"
@@ -179,9 +174,12 @@ def download_filing_document(filing_info: dict, save_dir: Path) -> Path:
     return file_path
 
 
-def main():
-    """Orchestrate ingestion function"""
-    tickers = ["MSFT"]
+def download_filings(tickers: list[str]) -> None:
+    """Download the latest 10-K of each ticker.
+
+    Args:
+        tickers (list[str]): The ticker symbols.
+    """
     ciks = get_company_cik(tickers)
 
     for ticker, cik in ciks.items():
@@ -192,7 +190,3 @@ def main():
             continue
         file_path = download_filing_document(filing, SAVE_DIR)
         print(f"{ticker}: {file_path}")
-
-
-if __name__ == "__main__":
-    main()

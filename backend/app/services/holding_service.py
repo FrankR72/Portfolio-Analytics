@@ -3,7 +3,8 @@
 Loads a portfolio's transactions, replays them with
 position_accounting_service to get shares and cost basis per symbol, and
 adds live prices from market_data_service. AnalyticService reuses the
-loading and replay steps.
+loading and replay steps. get_all_traded_symbols is separate: it lists the
+symbols of every user for the RAG ingestion.
 
 Known issues (pending refactor):
     The portfolio ownership check is re-implemented here instead of being
@@ -153,3 +154,16 @@ class HoldingService:
         holdings_dictionary = {symbol: data for symbol, data in holdings_dictionary.items() if data["number_current_shares"] > 0}
         enriched_holdings = await self.enrich_holdings_with_current_prices(holdings_dictionary)
         return [HoldingBase(**data) for data in enriched_holdings.values()]
+    
+    
+    async def get_all_traded_symbols(self) -> list[str]:
+        """Return a list of all symbols ever traded by any user.
+
+        Used by the RAG orchestrator to download filings for all tickers in
+        the platform. Fully sold symbols are included. It covers every user,
+        so it has no ownership check: don't call it from a user's route.
+        """
+        result = await self.db.execute(
+            select(func.distinct(models.Transaction.symbol))
+        )
+        return [row[0] for row in result.fetchall()]
